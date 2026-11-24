@@ -740,7 +740,7 @@ function renderAll(){renderStationList();renderDashboard()}
 setInterval(()=>{if(!$("view-dashboard").hidden)renderDashboard(); if(station)$("st-shift").textContent="Shift "+shiftOf(Date.now())},60000);
 route();
 /* ---------- Supabase ---------- */
-const SB_URL="https://cumvakmdemuvmfokoixm.supabase.co", SB_KEY="sb_publishable_3OE-sulDnavkDM3rjgj7Tw_f42a-GAb";
+const SB_URL="https://rcghnjftvdgwwejznpsz.supabase.co", SB_KEY="sb_publishable_mz70FZbbh1fILXLyN7Ay-w_U9mJgT6J";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY):null;
 function supaDB(){
   const cache={}, subs=[];
