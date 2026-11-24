@@ -91,21 +91,21 @@ textarea{min-height:64px;resize:vertical}
 body{margin:0}[hidden]{display:none!important}
 .qm{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
 .qm button{padding:12px 6px;font-weight:600;font-size:14px}
-.tcfv{background:#0f1624;border:1px solid #1f2a44;padding:18px;color:#e6edf8}
+.tcfv{background:#002C5F;border:1px solid #00AAD2;padding:18px;color:#e6edf8}
 .tcfv:fullscreen{overflow:auto;padding:24px 28px}.tcfv:fullscreen .tcf-c .vn{font-size:20px}.tcfv:fullscreen .tcf-c .vr{font-size:15px}
-.tcfnote{margin:4px 0 0;color:#9aa8c2;font-size:13.5px}
+.tcfnote{margin:4px 0 0;color:#B9CBE3;font-size:13.5px}
 .tcf-grp{display:grid;grid-template-columns:34px 1fr;gap:10px;margin-top:12px}
-.g-trim{--gc:#4c8dff;--gbg:#101a2e;--gtag:#16233f}.g-chassis{--gc:#2fbf9b;--gbg:#0f211f;--gtag:#13302b}.g-final{--gc:#f0a23b;--gbg:#251c0e;--gtag:#3a2a10}
+.g-trim{--gc:#00AAD2;--gbg:#06376F;--gtag:#002C5F}.g-chassis{--gc:#FFFFFF;--gbg:#0E4F86;--gtag:#06376F}.g-final{--gc:#E4DCD3;--gbg:#4B4339;--gtag:#2F2A24}
 .tcf-lab{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-weight:800;letter-spacing:.12em;color:var(--gc);font-size:13px;background:var(--gtag);border:1px solid var(--gc)}
 .tcf-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px}
 @media(min-width:1100px){.tcf-cards{grid-template-columns:repeat(10,minmax(0,1fr))}}
 .tcf-c{background:var(--gbg);border:1px solid var(--gc);padding:8px;min-width:0;position:relative}
 .tcf-c.hold{border-color:#d33;background:#2a1418}
-.tcf-c.empty{opacity:.35;border-style:dashed}
+.tcf-c.empty{opacity:.55;border-style:dashed}
 .tcf-c .nm{font-weight:800;font-size:12px;color:var(--gc);background:var(--gtag);display:inline-block;padding:2px 6px;letter-spacing:.03em}
 .tcf-c .vn{font-family:var(--f-mono);font-weight:700;font-size:17px;margin-top:8px;color:#fff}
-.tcf-c .vr{font-size:13.5px;color:#d6dff0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tcf-c .tm{font-size:12px;color:#9aa8c2;margin-top:2px}
+.tcf-c .vr{font-size:13.5px;color:#E8EEF7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcf-c .tm{font-size:12px;color:#D5E0F0;margin-top:2px}
 .tcf-c .hd{position:absolute;top:6px;right:6px;font-size:10px;font-weight:800;background:#d33;color:#fff;padding:1px 5px}
 .qm-lvl{margin-top:10px}.qm-lvl .label{margin-bottom:6px}
 .qm button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -259,7 +259,7 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
     <div class="flow" id="flow"></div>
 
     <div class="tcfv" style="margin-top:16px">
-      <div class="row" style="justify-content:space-between"><div><h2 style="color:#fff">TCF line view, station by station</h2><p class="tcfnote">Units inside TCF in the order they were scanned In. The newest is at T-1 and the oldest is next to leave at F-9.</p></div><div class="row" style="gap:10px"><span class="tcfnote" id="tcf-upd"></span><span class="chip count" id="tcf-count" style="background:#1d2b4a;color:#9cc2ff;border-color:#2a4073">0</span><button type="button" id="tcf-fs" style="background:#1d2b4a;color:#fff;border-color:#2a4073">Full screen</button></div></div>
+      <div class="row" style="justify-content:space-between"><div><h2 style="color:#fff">TCF line view, station by station</h2><p class="tcfnote">Units inside TCF in the order they were scanned In. The newest is at T-1 and the oldest is next to leave at F-9.</p></div><div class="row" style="gap:10px"><span class="tcfnote" id="tcf-upd"></span><span class="chip count" id="tcf-count" style="background:#06376F;color:#fff;border-color:#00AAD2">0</span><button type="button" id="tcf-fs" style="background:#1d2b4a;color:#fff;border-color:#2a4073">Full screen</button></div></div>
       <div id="tcf-line"></div>
     </div>
 
