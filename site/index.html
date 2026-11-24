@@ -653,6 +653,7 @@ $("result").addEventListener("click",async e=>{
   if(act==="force"&&pending){const r=$("seq-reason").value.trim(); if(!r){toast("Enter a reason");return} pending.remark=r; pending.seqWarn=""; commitScan()}
   if(act==="hold")openHold(b.dataset.vin);
   if(act==="issue")openIssue(b.dataset.vin);
+  if(act==="revert")openRevert(b.dataset.vin);
   if(act==="release")openRelease(b.dataset.vin);
 });
 
@@ -673,7 +674,7 @@ async function commitScan(){
     const u=units[p.vin];
     const holdNote=u&&u.hold?`<div class="banner bad" style="margin-top:8px">This unit is ON HOLD: ${esc(u.holdReason||"")}</div>`:"";
     showResult("ok","Logged ✓",`<div class="big">${p.vin}</div><div style="font-weight:600">${esc(p.variant)}</div><div class="note">${esc(ST[station].name)} · ${fmtT(now)} · Shift ${entry.shift}${p.remark?" · "+esc(p.remark):""}</div>${holdNote}
-      <div class="row" style="margin-top:12px">${u&&u.hold?`<button type="button" data-act="release" data-vin="${p.vin}">Release hold</button>`:`<button type="button" class="danger" data-act="hold" data-vin="${p.vin}">Put on hold</button>`}<button type="button" data-act="issue" data-vin="${p.vin}">Report issue</button></div>`);
+      <div class="row" style="margin-top:12px">${u&&u.hold?`<button type="button" data-act="release" data-vin="${p.vin}">Release hold</button>`:`<button type="button" class="danger" data-act="hold" data-vin="${p.vin}">Put on hold</button>`}<button type="button" data-act="issue" data-vin="${p.vin}">Report issue</button><button type="button" data-act="revert" data-vin="${p.vin}">Undo this scan</button></div>`);
   }catch(err){showResult("bad","Not saved",`The scan could not be saved (${esc(err&&err.code||"error")}). Scan again.`)}
   qmFill();
 }
@@ -774,6 +775,18 @@ function openHold(vin){
     const ins=Object.values(units).filter(x=>x.scans&&x.scans.TI&&!x.scans.TO&&!x.hold).sort((a,b)=>b.scans.TI.t-a.scans.TI.t); const ix=ins.findIndex(x=>x.vin===vin); const SN=[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5)),...Array.from({length:8},(_,i)=>"C-"+(i+1)),...Array.from({length:9},(_,i)=>"F-"+(i+1))];
     await db.collection("units").doc(vin).update({hold:true,...(ix>=0&&SN[ix]?{holdTcf:SN[ix]}:{}),holdReason:r,holdAt:now,holdBy:operator,holdStation:station||"",holdLog:log,updatedAt:now}); toast("On hold: "+vin)});
 }
+function openRevert(vin){
+  const u=units[vin], last=u&&lastStation(u); if(!last){toast("No scans to revert");return}
+  const prev=STATIONS.slice(0,ST[last].i).reverse().find(s=>u.scans&&u.scans[s.id]);
+  modal(`<h2>Revert last scan</h2><div class="mono">${vin}</div><div class="note">${esc(u.variant)}</div>
+    <p style="margin:8px 0">This removes the <b>${esc(ST[last].name)}</b> scan (${fmtDT(u.scans[last].t)}). The unit goes back to <b>${prev?esc(ST[prev.id].name):"not started"}</b>.</p>
+    <div><label class="label" for="rv-reason">Reason</label><textarea id="rv-reason" required placeholder="e.g. Scanned at the wrong station"></textarea></div>`,
+  async()=>{const r=$("rv-reason").value.trim(); if(!r){toast("Enter a reason");return false}
+    const now=Date.now(); const log=(u.revertLog||[]).concat([{t:now,by:operator,from:last,to:prev?prev.id:"",r,at:u.scans[last].t}]);
+    const patch={scans:{[last]:null},revertLog:log,updatedAt:now,last:prev?prev.id:""}; if(last==="PO")patch.color=null;
+    await db.collection("units").doc(vin).update(patch); toast("Reverted to "+(prev?ST[prev.id].name:"not started"));
+    if(!$("view-dashboard").hidden)setTimeout(()=>showVin(vin),400)});
+}
 function openRelease(vin){
   const u=units[vin];
   modal(`<h2>Release hold</h2><div class="mono">${vin}</div><div class="note">Held: ${esc(u.holdReason||"")}</div>
@@ -869,13 +882,15 @@ function renderSearch(){
   if(q&&units[q])showVin(q); else if(!q) $("vin-detail").innerHTML="";
 }
 $("search-body").addEventListener("click",e=>{const r=e.target.closest("[data-vin]");if(!r)return;e.preventDefault();showVin(r.dataset.vin)});
+$("vin-detail").addEventListener("click",e=>{const b=e.target.closest("button[data-revert]");if(b)openRevert(b.dataset.revert)});
 function showVin(vin){
   const u=units[vin]; if(!u)return;
   const tl=STATIONS.map(s=>{const e=u.scans&&u.scans[s.id];return `<div class="tl ${e?"done":""}"><b>${s.line} ${s.io}</b>${e?`<span class="mono">${fmtDT(e.t)}</span><div class="note">${esc(e.by||"")}${e.remark?" · "+esc(e.remark):""}</div>`:'<span class="muted">—</span>'}</div>`}).join("");
   const hl=(u.holdLog||[]).map(h=>`<li>${fmtDT(h.t)} · <b>${h.a==="hold"?"Hold":"Released"}</b> at ${esc(h.st?ST[h.st].name:"dashboard")} · ${esc(h.r)} <span class="note">${esc(h.by||"")}</span></li>`).join("");
+  const rl=(u.revertLog||[]).map(h=>`<li>${fmtDT(h.t)} · <b>Reverted</b> ${esc(ST[h.from]?ST[h.from].name:"")} · ${esc(h.r)} <span class="note">${esc(h.by||"")}</span></li>`).join("");
   const il=(u.issues||[]).map(i=>`<li>${fmtDT(i.t)} · <b>${esc(i.type)}</b> at ${esc(i.st?ST[i.st].name:"")} · ${esc(i.text)} <span class="note">${esc(i.by||"")}</span></li>`).join("");
-  $("vin-detail").innerHTML=`<div class="panel" style="margin-top:14px;background:var(--bg)"><div class="row" style="justify-content:space-between"><div><div class="mono" style="font-size:18px;font-weight:600">${u.vin}</div><div>${esc(u.variant)}</div></div>${u.hold?`<span class="chip hold">On hold: ${esc(u.holdReason)}</span>`:""}</div>
-    <div class="timeline">${tl}</div>${hl?`<h3 style="margin-top:12px">Hold history</h3><ul>${hl}</ul>`:""}${il?`<h3 style="margin-top:12px">Issues</h3><ul>${il}</ul>`:""}</div>`;
+  $("vin-detail").innerHTML=`<div class="panel" style="margin-top:14px;background:var(--bg)"><div class="row" style="justify-content:space-between"><div><div class="mono" style="font-size:18px;font-weight:600">${u.vin}</div><div>${esc(u.variant)}</div></div>${u.hold?`<span class="chip hold">On hold: ${esc(u.holdReason)}</span>`:""}${lastStation(u)?`<button type="button" data-revert="${u.vin}">Revert last scan</button>`:""}</div>
+    <div class="timeline">${tl}</div>${hl?`<h3 style="margin-top:12px">Hold history</h3><ul>${hl}</ul>`:""}${il?`<h3 style="margin-top:12px">Issues</h3><ul>${il}</ul>`:""}${rl?`<h3 style="margin-top:12px">Reverted scans</h3><ul>${rl}</ul>`:""}</div>`;
 }
 
 /* ---------- Export ---------- */
