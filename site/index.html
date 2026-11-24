@@ -418,7 +418,7 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
 
     <div class="panel" style="margin-top:16px">
       <div class="row" style="justify-content:space-between"><h2>Units on hold</h2><span class="chip hold count" id="hold-count">0</span></div>
-      <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>VIN</th><th>Variant</th><th>Station</th><th>Since</th><th>Reason</th><th></th></tr></thead><tbody id="hold-body"></tbody></table></div>
+      <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>VIN</th><th>Variant</th><th>Station</th><th>Days</th><th>Reason</th><th></th></tr></thead><tbody id="hold-body"></tbody></table></div>
     </div>
 
     <div class="panel" style="margin-top:16px">
@@ -531,6 +531,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtT=ts=>ts?new Date(ts).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}):"";
 const fmtDT=ts=>ts?new Date(ts).toLocaleString([], {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"";
+function dayWord(n){return n<1?"Today":n===1?"1 day":n+" days"}
 function fmtDur(ms){if(ms==null||ms<0)return "–";const m=Math.round(ms/60000);if(m<60)return m+" min";const h=Math.floor(m/60);return h+" h "+String(m%60).padStart(2,"0")+" m"}
 const VIN_RE=/^[A-HJ-NPR-Z0-9]{17}$/;
 function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
@@ -1050,9 +1051,9 @@ function renderDashboard(){
   // Hold
   const holds=all.filter(u=>u.hold).sort((a,b)=>a.holdAt-b.holdAt);
   const auto=[...stuck.entries()].map(([vin,s])=>({u:units[vin],s})).sort((a,b)=>a.s.since-b.s.since);
-  const autoRows=auto.map(({u,s})=>`<tr><td class="mono">${u.vin}</td><td>${esc(u.variant)}</td><td>${esc(positionOf(u))}</td><td>${fmtDur(Date.now()-s.since)}</td><td class="wrap">No movement for ${s.n} working days<div class="note">Automatic hold. It clears when the unit is scanned at the next station.</div></td><td></td></tr>`).join("");
+  const autoRows=auto.map(({u,s})=>`<tr><td class="mono">${u.vin}</td><td>${esc(u.variant)}</td><td>${esc(positionOf(u))}</td><td>${dayWord(s.n)}</td><td class="wrap">No movement for ${s.n} working days<div class="note">Automatic hold. It clears when the unit is scanned at the next station.</div></td><td></td></tr>`).join("");
   $("hold-count").textContent=holds.length+auto.length;
-  $("hold-body").innerHTML=(holds.length||auto.length)?autoRows+holds.map(u=>`<tr><td class="mono">${u.vin}</td><td>${esc(u.variant)}</td><td>${esc(u.holdStation?ST[u.holdStation].name:positionOf(u))}</td><td>${fmtDur(Date.now()-u.holdAt)}</td><td class="wrap">${esc(u.holdReason)}<div class="note">${esc(u.holdBy||"")}</div></td><td><button data-release="${u.vin}">Release</button></td></tr>`).join("")
+  $("hold-body").innerHTML=(holds.length||auto.length)?autoRows+holds.map(u=>`<tr><td class="mono">${u.vin}</td><td>${esc(u.variant)}</td><td>${esc(u.holdStation?ST[u.holdStation].name:positionOf(u))}</td><td>${dayWord(Math.floor((Date.now()-u.holdAt)/864e5))}</td><td class="wrap">${esc(u.holdReason)}<div class="note">${esc(u.holdBy||"")}</div></td><td><button data-release="${u.vin}">Release</button></td></tr>`).join("")
     :`<tr><td colspan="6" class="empty">No units on hold.</td></tr>`;
   // Mix
   const mix={}; all.filter(u=>inToday(u,"BI")).forEach(u=>mix[u.variant]=(mix[u.variant]||0)+1);
@@ -1295,6 +1296,8 @@ $("u-body").addEventListener("click",async e=>{
     s=s.trim(); if(s===""||s==="-"||s==="—")return {k:0,v:""};
     let m=s.match(/^(\d+)\s*h\s*(\d+)\s*m$/); if(m)return {k:1,v:+m[1]*60+ +m[2]};
     m=s.match(/^(\d+)\s*min$/); if(m)return {k:1,v:+m[1]};
+    if(s==="Today")return {k:1,v:0};
+    m=s.match(/^(\d+) days?$/); if(m)return {k:1,v:+m[1]*1440};
     if(/^-?\d+(\.\d+)?$/.test(s))return {k:1,v:parseFloat(s)};
     if(/^[A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}/.test(s)){const t=Date.parse(s+" "+new Date().getFullYear());if(!isNaN(t))return {k:1,v:t}}
     return {k:2,v:s.toLowerCase()};
