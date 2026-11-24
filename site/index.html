@@ -258,7 +258,7 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
     <div class="flow" id="flow"></div>
 
     <div class="tcfv" style="margin-top:16px">
-      <div class="row" style="justify-content:space-between"><div><h2 style="color:#fff">TCF line view, station by station</h2><p class="tcfnote">Units inside TCF in the order they were scanned In. The newest is at TRIM 01 and the oldest is next to leave at FINAL 09.</p></div><span class="chip count" id="tcf-count" style="background:#1d2b4a;color:#9cc2ff;border-color:#2a4073">0</span></div>
+      <div class="row" style="justify-content:space-between"><div><h2 style="color:#fff">TCF line view, station by station</h2><p class="tcfnote">Units inside TCF in the order they were scanned In. The newest is at T-1 and the oldest is next to leave at F-9.</p></div><span class="chip count" id="tcf-count" style="background:#1d2b4a;color:#9cc2ff;border-color:#2a4073">0</span></div>
       <div id="tcf-line"></div>
     </div>
 
@@ -754,9 +754,9 @@ function renderDashboard(){
   // TCF station line view: units inside TCF, newest In = TRIM 01, oldest = FINAL 09
   (function(){
     const inside=all.filter(u=>u.scans&&u.scans.TI&&!u.scans.TO).sort((a,b)=>b.scans.TI.t-a.scans.TI.t);
-    const grp=[["TRIM",[...Array.from({length:4},(_,i)=>"TRIM "+String(i+1).padStart(2,"0")),"PANORAMA",...Array.from({length:15},(_,i)=>"TRIM "+String(i+5).padStart(2,"0"))]],
-      ["CHASSIS",Array.from({length:8},(_,i)=>"CHASSIS "+String(i+1).padStart(2,"0"))],
-      ["FINAL",Array.from({length:9},(_,i)=>"FINAL "+String(i+1).padStart(2,"0"))]];
+    const grp=[["TRIM",[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANORAMA",...Array.from({length:15},(_,i)=>"T-"+(i+5))]],
+      ["CHASSIS",Array.from({length:8},(_,i)=>"C-"+(i+1))],
+      ["FINAL",Array.from({length:9},(_,i)=>"F-"+(i+1))]];
     let n=0;
     $("tcf-line").innerHTML=grp.map(([g,names])=>`<div class="tcf-grp g-${g.toLowerCase()}"><div class="tcf-lab">${g}</div><div class="tcf-cards">${names.map(nm=>{
       const u=inside[n++];
