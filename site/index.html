@@ -1012,7 +1012,7 @@ function renderShop(){
 }
 /* Auto hold: a unit whose last scan is 2 or more working days old counts as held.
    A working day is a day on which the unit's shop had any scan (In or Out), so weekends, holidays and plant shutdowns are skipped. */
-const STUCK_DAYS=2;
+const STUCK_LIMIT=[2,2,2,3]; // working days per shop: Body, Paint, TCF, QC
 function stuckInfo(){
   const act=[new Set(),new Set(),new Set(),new Set()], today=prodDay(Date.now()), out=new Map(), all=Object.values(units);
   all.forEach(u=>{const s=u.scans||{};STATIONS.forEach(st=>{const e=s[st.id];if(e&&e.day)act[ST[st.id].i>>1].add(e.day)})});
@@ -1020,7 +1020,7 @@ function stuckInfo(){
     if(u.hold)return; const last=lastStation(u); if(!last||last==="QO")return;
     const e=u.scans[last]; if(!e||!e.day)return; const sh=ST[last].i>>1;
     let n=0; act[sh].forEach(d=>{if(d>e.day&&d<=today)n++});
-    if(n>=STUCK_DAYS)out.set(u.vin,{n,shop:LINES[sh],since:e.t,at:last});
+    if(n>=STUCK_LIMIT[sh])out.set(u.vin,{n,shop:LINES[sh],since:e.t,at:last});
   });
   return out;
 }
