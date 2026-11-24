@@ -96,8 +96,8 @@ body{margin:0}[hidden]{display:none!important}
 .tcfnote{margin:4px 0 0;color:#B9CBE3;font-size:13.5px}
 .tcf-grp{display:grid;grid-template-columns:34px 1fr;gap:10px;margin-top:12px}
 .g-trim{--gc:#00AAD2;--gbg:#06376F;--gtag:#002C5F}.g-chassis{--gc:#FFFFFF;--gbg:#0E4F86;--gtag:#06376F}.g-final{--gc:#E4DCD3;--gbg:#4B4339;--gtag:#2F2A24}
-.tcf-grp+.tcf-grp{margin-top:34px;position:relative}
-.tcf-grp+.tcf-grp::before{content:"";position:absolute;left:0;right:0;top:-17px;height:2px;background:linear-gradient(90deg,var(--gc),transparent 85%);opacity:.55}
+.tcf-grp+.tcf-grp{margin-top:48px;position:relative}
+.tcf-grp+.tcf-grp::before{content:"";position:absolute;left:0;right:0;top:-25px;height:3px;background:linear-gradient(90deg,var(--gc),var(--gc) 60%,transparent);opacity:.9}
 .tcf-lab{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:800;letter-spacing:.12em;color:var(--gc);font-size:13px;background:var(--gtag);border:1px solid var(--gc)}
 .tcf-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px}
 @media(min-width:1100px){.tcf-cards{grid-template-columns:repeat(10,minmax(0,1fr))}}
@@ -110,6 +110,9 @@ body{margin:0}[hidden]{display:none!important}
 .tcf-c .vn{font-family:var(--f-mono);font-weight:700;font-size:17px;margin-top:8px;color:var(--tfg,#fff)}
 .tcf-c .vr{font-size:13.5px;color:var(--tfg,#E8EEF7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tcf-c .vr.cn{white-space:normal;font-size:12px;line-height:1.2;min-height:2.4em}
+.tcf-c[data-tip]:hover{z-index:30}
+@media(min-width:1100px){.tcf-c:nth-child(10n):hover::after,.tcf-c:nth-child(10n-1):hover::after,.tcf-c:nth-child(10n-2):hover::after{left:auto;right:0}}
+.tcf-c[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;top:100%;margin-top:6px;min-width:230px;max-width:300px;white-space:pre-line;background:#0b1424;color:#fff;border:1px solid var(--gc);padding:10px 12px;font-size:12.5px;line-height:1.5;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none}
 .tcf-c .tm{font-size:12px;color:var(--tfg2,#D5E0F0);margin-top:2px}
 .tcf-c .hd{position:absolute;top:6px;right:6px;font-size:10px;font-weight:800;background:#d33;color:#fff;padding:1px 5px}
 .qm-lvl{margin-top:10px}.qm-lvl .label{margin-bottom:6px}
@@ -808,6 +811,7 @@ function renderDashboard(){
   (function(){
     const full=all.filter(u=>u.scans&&u.scans.TI&&!u.scans.TO).sort((a,b)=>b.scans.TI.t-a.scans.TI.t);
     const inside=full.filter(u=>!u.hold), off=full.filter(u=>u.hold);
+    const tip=(u,pos)=>esc(["Station: "+pos,"VIN: "+u.vin,"Model: "+(u.variant||"-"),"Body color: "+(u.color?u.color+" ("+colorName(u.color)+")":"not recorded"),"TCF In: "+fmtDT(u.scans.TI.t)+" ("+fmtDur(Date.now()-u.scans.TI.t)+" in TCF)",u.scans.PO?"Paint Out: "+fmtDT(u.scans.PO.t):"",u.hold?"ON HOLD: "+(u.holdReason||"")+(u.holdBy?" ("+u.holdBy+")":"")+(u.holdAt?", since "+fmtDT(u.holdAt):""):""].filter(Boolean).join("\n"));
     const SN=[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5)),...Array.from({length:8},(_,i)=>"C-"+(i+1)),...Array.from({length:9},(_,i)=>"F-"+(i+1))];
     const grp=[["TRIM",[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5))]],
       ["CHASSIS",Array.from({length:8},(_,i)=>"C-"+(i+1))],
@@ -815,10 +819,11 @@ function renderDashboard(){
     let n=0;
     $("tcf-line").innerHTML=grp.map(([g,names])=>`<div class="tcf-grp g-${g.toLowerCase()}"><div class="tcf-lab">${g}</div><div class="tcf-cards">${names.map(nm=>{
       const u=inside[n++];
-      if(!u)return `<div class="tcf-c empty"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">Empty</div></div>`;
-      return `<div class="tcf-c${u.hold?" hold":""}" style="${tileStyle(u.color)}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(colorName(u.color))}">${u.color?esc(u.color):"-"}</div></div>`}).join("")}</div></div>`).join("")
+      if(!u)return `<div class="tcf-c empty" data-tip="Station: ${nm}
+No vehicle"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">Empty</div></div>`;
+      return `<div class="tcf-c${u.hold?" hold":""}" style="${tileStyle(u.color)}" data-tip="${tip(u,nm)}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(colorName(u.color))}">${u.color?esc(u.color):"-"}</div></div>`}).join("")}</div></div>`).join("")
       +(inside.length>37?`<div class="tcfnote" style="margin-top:10px">${inside.length-37} more unit(s) scanned into TCF are beyond the 37 stations, check for missing TCF Out scans.</div>`:"");
-    $("tcf-line").innerHTML+=`<div class="tcf-off"><div class="tcf-offh">OFFLINE <span>(held, taken off the conveyor)</span><b>${off.length}</b></div>`+(off.length?`<div class="tcf-cards">${off.map(u=>`<div class="tcf-c hold" style="${tileStyle(u.color)}"><span class="nm">Off from ${esc(u.holdTcf||SN[full.indexOf(u)]||"TCF")}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(colorName(u.color))}">${u.color?esc(u.color):"-"}</div><div class="tm">${esc(u.holdReason||"")}</div><div class="tm">Offline ${fmtDur(Date.now()-(u.holdAt||Date.now()))}</div></div>`).join("")}</div>`:`<div class="tcfnote">No units offline.</div>`)+`</div>`;
+    $("tcf-line").innerHTML+=`<div class="tcf-off"><div class="tcf-offh">OFFLINE <span>(held, taken off the conveyor)</span><b>${off.length}</b></div>`+(off.length?`<div class="tcf-cards">${off.map(u=>`<div class="tcf-c hold" style="${tileStyle(u.color)}" data-tip="${tip(u,"Offline, left from "+(u.holdTcf||SN[full.indexOf(u)]||"TCF"))}"><span class="nm">Off from ${esc(u.holdTcf||SN[full.indexOf(u)]||"TCF")}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(colorName(u.color))}">${u.color?esc(u.color):"-"}</div><div class="tm">${esc(u.holdReason||"")}</div><div class="tm">Offline ${fmtDur(Date.now()-(u.holdAt||Date.now()))}</div></div>`).join("")}</div>`:`<div class="tcfnote">No units offline.</div>`)+`</div>`;
     $("tcf-count").textContent=inside.length+" on line";
     $("tcf-upd").textContent="Updated "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})+" · refreshes every 60 s";
   })();
