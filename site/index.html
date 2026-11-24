@@ -100,6 +100,8 @@ body{margin:0}[hidden]{display:none!important}
 .tcf-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px}
 @media(min-width:1100px){.tcf-cards{grid-template-columns:repeat(10,minmax(0,1fr))}}
 .tcf-c{background:var(--gbg);border:1px solid var(--gc);padding:8px;min-width:0;position:relative}
+.tcf-off{margin-top:18px;border-top:1px dashed #d33;padding-top:12px}.tcf-offh{font-weight:800;letter-spacing:.08em;color:#ff8a8a;font-size:13px;margin-bottom:10px}.tcf-offh span{font-weight:500;letter-spacing:0;color:#B9CBE3;margin-left:6px}.tcf-offh b{margin-left:10px;background:#d33;color:#fff;padding:1px 8px}
+.tcf-off .nm{color:#ff8a8a;background:#3a1218}
 .tcf-c.hold{border-color:#d33;background:#2a1418}
 .tcf-c.empty{opacity:.8;border-style:dashed}
 .tcf-c .nm{max-width:100%;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:top;letter-spacing:0;font-weight:800;font-size:12px;color:var(--gc);background:var(--gtag);display:inline-block;padding:2px 6px;letter-spacing:.03em}
@@ -717,7 +719,8 @@ function openHold(vin){
     <div><label class="label" for="h-reason">Hold reason</label><textarea id="h-reason" required placeholder="e.g. Paint run on LH rear door, waiting for rework"></textarea></div>`,
   async()=>{const r=$("h-reason").value.trim(); if(!r){toast("Enter a hold reason");return false}
     const now=Date.now(); const log=(u.holdLog||[]).concat([{a:"hold",t:now,by:operator,st:station||"",r}]);
-    await db.collection("units").doc(vin).update({hold:true,holdReason:r,holdAt:now,holdBy:operator,holdStation:station||"",holdLog:log,updatedAt:now}); toast("On hold: "+vin)});
+    const ins=Object.values(units).filter(x=>x.scans&&x.scans.TI&&!x.scans.TO&&!x.hold).sort((a,b)=>b.scans.TI.t-a.scans.TI.t); const ix=ins.findIndex(x=>x.vin===vin); const SN=[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5)),...Array.from({length:8},(_,i)=>"C-"+(i+1)),...Array.from({length:9},(_,i)=>"F-"+(i+1))];
+    await db.collection("units").doc(vin).update({hold:true,...(ix>=0&&SN[ix]?{holdTcf:SN[ix]}:{}),holdReason:r,holdAt:now,holdBy:operator,holdStation:station||"",holdLog:log,updatedAt:now}); toast("On hold: "+vin)});
 }
 function openRelease(vin){
   const u=units[vin];
@@ -752,9 +755,11 @@ function renderDashboard(){
     const held=all.filter(u=>u.hold&&u.scans&&u.scans[si]&&!u.scans[so]).length;
     return `<div class="line-card"><h3>${ln} ${held?`<span class="chip hold">${held} hold</span>`:""}</h3>
       <div class="io-row"><div><div class="label">In</div><div class="n">${nIn}</div></div><div><div class="label">Out</div><div class="n">${nOut}</div></div><div class="wip"><div class="label">Inside</div><div class="n">${wip}</div></div></div></div>`}).join("");
-  // TCF station line view: units inside TCF, newest In = TRIM 01, oldest = FINAL 09
+  // TCF station line view: units on the conveyor, newest In = T-1, oldest = F-9. Held units are offline.
   (function(){
-    const inside=all.filter(u=>u.scans&&u.scans.TI&&!u.scans.TO).sort((a,b)=>b.scans.TI.t-a.scans.TI.t);
+    const full=all.filter(u=>u.scans&&u.scans.TI&&!u.scans.TO).sort((a,b)=>b.scans.TI.t-a.scans.TI.t);
+    const inside=full.filter(u=>!u.hold), off=full.filter(u=>u.hold);
+    const SN=[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5)),...Array.from({length:8},(_,i)=>"C-"+(i+1)),...Array.from({length:9},(_,i)=>"F-"+(i+1))];
     const grp=[["TRIM",[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5))]],
       ["CHASSIS",Array.from({length:8},(_,i)=>"C-"+(i+1))],
       ["FINAL",Array.from({length:9},(_,i)=>"F-"+(i+1))]];
@@ -764,7 +769,8 @@ function renderDashboard(){
       if(!u)return `<div class="tcf-c empty"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">Empty</div></div>`;
       return `<div class="tcf-c${u.hold?" hold":""}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="vr">${u.color?"Color: "+esc(u.color):"Color: -"}</div><div class="tm">${fmtT(u.scans.TI.t)} · ${fmtDur(Date.now()-u.scans.TI.t)}</div></div>`}).join("")}</div></div>`).join("")
       +(inside.length>37?`<div class="tcfnote" style="margin-top:10px">${inside.length-37} more unit(s) scanned into TCF are beyond the 37 stations, check for missing TCF Out scans.</div>`:"");
-    $("tcf-count").textContent=inside.length+" in TCF";
+    $("tcf-line").innerHTML+=`<div class="tcf-off"><div class="tcf-offh">OFFLINE <span>(held, taken off the conveyor)</span><b>${off.length}</b></div>`+(off.length?`<div class="tcf-cards">${off.map(u=>`<div class="tcf-c hold"><span class="nm">Off from ${esc(u.holdTcf||SN[full.indexOf(u)]||"TCF")}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr">${esc(u.variant||"-")}</div><div class="vr">${u.color?"Color: "+esc(u.color):"Color: -"}</div><div class="tm">${esc(u.holdReason||"")}</div><div class="tm">Offline ${fmtDur(Date.now()-(u.holdAt||Date.now()))}</div></div>`).join("")}</div>`:`<div class="tcfnote">No units offline.</div>`)+`</div>`;
+    $("tcf-count").textContent=inside.length+" on line";
     $("tcf-upd").textContent="Updated "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})+" · refreshes every 60 s";
   })();
   // Hold
