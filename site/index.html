@@ -884,7 +884,7 @@ function renderStationList(){
   $("k-in-t").textContent="Inside "+st.line+" Now"; $("k-in").textContent=inside; $("k-in-d").textContent="Scanned "+st.line+" In, not yet Out";
   const held=all.filter(u=>u.hold).sort((x,y)=>x.holdAt-y.holdAt);
   const stk=stuckInfo().size; $("k-hold").textContent=held.length+stk; $("k-hold-d").textContent=held.length?"Oldest held "+fmtDur(Date.now()-held[0].holdAt)+(stk?" · "+stk+" auto":""):(stk?stk+" auto (no movement)":"Nothing on hold");
-  $("st-recent").innerHTML=rows.length?rows.slice(0,40).map(u=>`<div class="it"><span class="mono muted">${fmtT(u.scans[station].t)}</span><span style="min-width:0"><span class="mono">${u.vin}</span><br><span class="note">${esc(u.variant)}</span></span><span>${u.hold?'<span class="chip hold">Hold</span>':""}</span></div>`).join("")
+  $("st-recent").innerHTML=rows.length?rows.slice(0,40).map(u=>`<div class="it"><span class="mono muted">${fmtT(u.scans[station].t)}</span><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span class="mono">${u.vin}</span><span class="note" style="margin-left:12px">${esc(u.variant)}</span></span><span>${u.hold?'<span class="chip hold">Hold</span>':""}</span></div>`).join("")
     :`<div class="empty">No vehicles logged at ${esc(ST[station].name)} yet today. Scan the VIN card on the inspection book to log the first one.</div>`;
 }
 
