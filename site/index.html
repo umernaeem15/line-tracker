@@ -164,6 +164,16 @@ body{margin:0}[hidden]{display:none!important}
 .plantv:fullscreen .pl-io .v{font-size:clamp(16px,3.2vh,34px)}
 .plantv:fullscreen .pl-io .ab,.plantv:fullscreen .pl-card .sub,.plantv:fullscreen .pl-foot{font-size:clamp(10px,1.6vh,16px)}
 .plantv:fullscreen .pl-mod .r{font-size:clamp(11px,1.9vh,20px)}
+a.line-card{display:block;color:inherit;text-decoration:none;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+a.line-card:hover,a.line-card:focus-visible{border-color:#00AAD2;box-shadow:0 0 0 2px rgba(0,170,210,.25);outline:none}
+a.line-card h3::after{content:" \203A";color:#00AAD2}
+.shopnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.shopnav a{padding:8px 16px;border:1px solid var(--line,#d5d9e2);background:#fff;color:#002C5F;font-weight:600;text-decoration:none}
+.shopnav a[aria-current="page"]{background:#002C5F;color:#fff;border-color:#002C5F}
+.shopnav a:hover{border-color:#00AAD2}
+.shop-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px}
+.shop-kpis .kpi{background:#fff;border:1px solid var(--line,#d5d9e2);padding:14px 16px}
+.shop-kpis .kpi .n{font-size:34px;font-weight:800;color:#002C5F;line-height:1.1;margin-top:4px}
 .tcf-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
 .tcf-st{background:#06376F;border:1px solid #00AAD2;padding:10px 14px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .tcf-st h4{margin:0;font-size:13px;letter-spacing:.08em;color:#B9CBE3;min-width:92px}
@@ -375,6 +385,20 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
     </div>
   </section>
 
+  <!-- SHOP DASHBOARD VIEW (opened from the dashboard tiles) -->
+  <section id="view-shop" hidden>
+    <nav class="shopnav" id="shopnav" aria-label="Shops"></nav>
+    <div id="shop-generic"></div>
+    <div id="shop-tcf" hidden style="margin-top:16px">
+    <div class="tcfv" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between"><div><h2 style="color:#fff">TCF line view, station by station</h2><p class="tcfnote">Units inside TCF in the order they were scanned In. The newest is at T-1 and the oldest is next to leave at F-9.</p></div><div class="row" style="gap:10px"><span class="tcfnote" id="tcf-upd"></span><span class="chip count" id="tcf-count" style="background:#06376F;color:#fff;border-color:#00AAD2">0</span><button type="button" id="tcf-fs" style="background:transparent;color:#B9CBE3;border:1px solid rgba(185,203,227,.35);font-size:12px;font-weight:500;padding:4px 10px;min-height:0;height:auto">Full screen</button></div></div>
+      <div class="tcf-top"><div id="tcf-stats" class="tcf-stats"></div>
+      <div id="tcf-models"></div></div>
+      <div id="tcf-line"></div>
+    </div>
+    </div>
+  </section>
+
   <!-- DASHBOARD VIEW -->
   <section id="view-dashboard" hidden>
     <div class="row" style="justify-content:space-between">
@@ -386,13 +410,6 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
     </div>
 
     <div class="flow" id="flow"></div>
-
-    <div class="tcfv" style="margin-top:16px">
-      <div class="row" style="justify-content:space-between"><div><h2 style="color:#fff">TCF line view, station by station</h2><p class="tcfnote">Units inside TCF in the order they were scanned In. The newest is at T-1 and the oldest is next to leave at F-9.</p></div><div class="row" style="gap:10px"><span class="tcfnote" id="tcf-upd"></span><span class="chip count" id="tcf-count" style="background:#06376F;color:#fff;border-color:#00AAD2">0</span><button type="button" id="tcf-fs" style="background:transparent;color:#B9CBE3;border:1px solid rgba(185,203,227,.35);font-size:12px;font-weight:500;padding:4px 10px;min-height:0;height:auto">Full screen</button></div></div>
-      <div class="tcf-top"><div id="tcf-stats" class="tcf-stats"></div>
-      <div id="tcf-models"></div></div>
-      <div id="tcf-line"></div>
-    </div>
 
     <div class="panel" style="margin-top:16px">
       <div class="row" style="justify-content:space-between"><h2>Units on hold</h2><span class="chip hold count" id="hold-count">0</span></div>
@@ -525,14 +542,15 @@ let pending=null; // scan waiting for variant choice / sequence confirmation
 let signedIn=false, authChecked=false;
 function route(){
   $("view-login").hidden=signedIn||!authChecked;
-  if(!signedIn){$("view-station").hidden=true;$("view-dashboard").hidden=true;$("view-users").hidden=true;$("view-import").hidden=true;$("view-plant").hidden=true;return}
-  const v=location.hash==="#dashboard"?"dashboard":location.hash==="#plant"?"plant":(location.hash==="#users"&&isAdmin?"users":(location.hash==="#import"&&isAdmin?"import":"station"));
-  $("view-station").hidden=v!=="station"; $("view-dashboard").hidden=v!=="dashboard"; $("view-users").hidden=v!=="users"; $("view-import").hidden=v!=="import"; $("view-plant").hidden=v!=="plant";
+  if(!signedIn){$("view-station").hidden=true;$("view-dashboard").hidden=true;$("view-users").hidden=true;$("view-import").hidden=true;$("view-plant").hidden=true;$("view-shop").hidden=true;return}
+  const v=location.hash==="#dashboard"?"dashboard":location.hash==="#plant"?"plant":/^#shop-/.test(location.hash)?"shop":(location.hash==="#users"&&isAdmin?"users":(location.hash==="#import"&&isAdmin?"import":"station"));
+  $("view-station").hidden=v!=="station"; $("view-dashboard").hidden=v!=="dashboard"; $("view-users").hidden=v!=="users"; $("view-import").hidden=v!=="import"; $("view-plant").hidden=v!=="plant"; $("view-shop").hidden=v!=="shop";
   $("tab-users").hidden=!isAdmin; $("tab-import").hidden=!isAdmin;
   $("tab-station").toggleAttribute("aria-current",false); $("tab-dashboard").toggleAttribute("aria-current",false); $("tab-users").toggleAttribute("aria-current",false); $("tab-import").toggleAttribute("aria-current",false); $("tab-plant").toggleAttribute("aria-current",false);
-  $("tab-"+v).setAttribute("aria-current","page");
+  $("tab-"+(v==="shop"?"dashboard":v)).setAttribute("aria-current","page");
   if(v==="users")loadUsers();
   if(v==="plant")renderPlant();
+  if(v==="shop")renderShop();
   if(v==="station"){renderStationSetup(); setTimeout(()=>{if(!$("vin-input").closest("[hidden]"))$("vin-input").focus()},50)}
   else renderDashboard();
 }
@@ -940,26 +958,8 @@ function tcfReplay(){
   });
   return {sl,where,from};
 }
-function tcfInsideSet(){ // units counted as inside TCF: on the 37-station conveyor, or held (offline). Older units pushed off the end count as lined off.
-  const rp=tcfReplay(); return new Set(Object.values(units).filter(u=>u.scans&&u.scans.TI&&!u.scans.TO&&((u.vin in rp.where)||u.hold)).map(u=>u.vin));
-}
-function renderDashboard(){
-  if($("view-dashboard").hidden)return;
-  const today=prodDay(Date.now()); const sf=$("f-shift").value;
-  $("dash-date").textContent="Production day "+new Date(today+"T12:00").toLocaleDateString([], {weekday:"long",day:"numeric",month:"long"})+" · Shift A 08:00–16:30, Shift B 16:30–01:00";
-  const all=Object.values(units);
-  const tcfIn=tcfInsideSet();
-  const inToday=(u,s)=>{const e=u.scans&&u.scans[s];return e&&e.day===today&&(!sf||e.shift===sf)};
-  // Flow cards
-  $("flow").innerHTML=LINES.map((ln,li)=>{
-    const si=STATIONS[li*2].id, so=STATIONS[li*2+1].id;
-    const nIn=all.filter(u=>inToday(u,si)).length, nOut=all.filter(u=>inToday(u,so)).length;
-    const insd=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]&&(li!==2||tcfIn.has(u.vin))); const wip=insd.length;
-    const held=insd.filter(u=>u.hold).length;
-    return `<div class="line-card"><h3>${ln} ${held?`<span class="chip hold">${held} hold</span>`:""}</h3>
-      <div class="io-row"><div><div class="label">In</div><div class="n">${nIn}</div></div><div><div class="label">Out</div><div class="n">${nOut}</div></div><div class="wip"><div class="label">Inside</div><div class="n">${wip}</div></div></div></div>`}).join("");
-  // TCF station line view: units on the conveyor, newest In = T-1, oldest = F-9. Held units are offline.
-  (function(){
+function renderTcfView(){
+  const all=Object.values(units), today=prodDay(Date.now());
     const full=all.filter(u=>u.scans&&u.scans.TI&&!u.scans.TO).sort((a,b)=>b.scans.TI.t-a.scans.TI.t);
     const off=full.filter(u=>u.hold); const rp=tcfReplay();
     const slot=rp.sl.map(v=>v&&!units[v].hold?units[v]:null); const inside=slot.filter(Boolean); const beyond=full.filter(u=>!u.hold&&!(u.vin in rp.where));
@@ -985,7 +985,49 @@ No vehicle"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">
     $("tcf-stats").innerHTML=blk("LINE IN (TCF In)",cnt("TI"))+blk("LINE OFF (TCF Out)",cnt("TO"));
     $("tcf-count").textContent=inside.length+" on line";
     $("tcf-upd").textContent="Updated "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})+" · refreshes every 60 s";
-  })();
+}
+/* ---------- Shop dashboards (opened from the Body / Paint / TCF / QC tiles) ---------- */
+const SHOPS={body:["Body","BI","BO","Paint"],paint:["Paint","PI","PO","TCF"],tcf:["TCF","TI","TO","QC"],qc:["QC","QI","QO","line-off"]};
+function shopKey(){const m=location.hash.match(/^#shop-(\w+)/);return m&&SHOPS[m[1]]?m[1]:"body"}
+function renderShop(){
+  if($("view-shop").hidden)return;
+  const key=shopKey(), [name,si,so,next]=SHOPS[key];
+  $("shopnav").innerHTML=`<a href="#dashboard">&lsaquo; Dashboard</a>`+Object.entries(SHOPS).map(([k,v])=>`<a href="#shop-${k}"${k===key?' aria-current="page"':""}>${v[0]}</a>`).join("");
+  $("shop-tcf").hidden=key!=="tcf"; $("shop-generic").hidden=key==="tcf";
+  if(key==="tcf"){renderTcfView();return}
+  const today=prodDay(Date.now()), all=Object.values(units);
+  const cnt=s=>{const o={t:0,A:0,B:0};all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){o.t++;o[e.shift]=(o[e.shift]||0)+1}});return o};
+  const ci=cnt(si), co=cnt(so);
+  const inside=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]).sort((a,b)=>a.scans[si].t-b.scans[si].t);
+  const held=inside.filter(u=>u.hold).length;
+  const nx=STATIONS[ST[so].i+1]; const wait=nx?all.filter(u=>u.scans&&u.scans[so]&&!u.scans[nx.id]).length:null;
+  const mm={}; const bump=(s,k)=>all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){const m=mm[u.variant||"Unknown"]=mm[u.variant||"Unknown"]||{n:0,i:0,o:0};m[k]++}});
+  inside.forEach(u=>{const m=mm[u.variant||"Unknown"]=mm[u.variant||"Unknown"]||{n:0,i:0,o:0};m.n++}); bump(si,"i"); bump(so,"o");
+  const rows=Object.entries(mm).sort((a,b)=>b[1].n-a[1].n||b[1].i-a[1].i);
+  const kpi=(l,v,sub)=>`<div class="kpi"><div class="label">${l}</div><div class="n">${v}</div>${sub?`<div class="note">${sub}</div>`:""}</div>`;
+  $("shop-generic").innerHTML=`<div class="row" style="justify-content:space-between"><div><h1 style="font-size:26px">${name} dashboard</h1><div class="note">Units inside ${name} right now and today's movement. Updated ${new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})}, refreshes every 60 s.</div></div></div>
+    <div class="shop-kpis">${kpi("Inside now",inside.length,held?held+" on hold":"")}${kpi(name+" In today",ci.t,"Shift A "+ci.A+" · Shift B "+ci.B)}${kpi(name+" Out today",co.t,"Shift A "+co.A+" · Shift B "+co.B)}${wait==null?"":kpi("Waiting for "+next,wait,"Out of "+name+", not yet in "+next)}</div>
+    <div class="panel" style="margin-top:16px"><h2>By model</h2><div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Model</th><th class="num">Inside now</th><th class="num">In today</th><th class="num">Out today</th></tr></thead><tbody>${rows.length?rows.map(([m,v])=>`<tr><td>${esc(m)}</td><td class="num">${v.n}</td><td class="num">${v.i}</td><td class="num">${v.o}</td></tr>`).join(""):`<tr><td colspan="4" class="empty">Nothing in ${name} today.</td></tr>`}</tbody></table></div></div>
+    <div class="panel" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h2>Units inside ${name}</h2><span class="chip count">${inside.length}</span></div><p class="note">Oldest first.</p><div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>VIN</th><th>Model</th><th>Color</th><th>${name} In</th><th>Time inside</th><th></th></tr></thead><tbody>${inside.length?inside.slice(0,300).map(u=>`<tr><td class="mono">${u.vin}</td><td>${esc(u.variant||"-")}</td><td>${esc(u.color||"-")}</td><td>${fmtDT(u.scans[si].t)}</td><td>${fmtDur(Date.now()-u.scans[si].t)}</td><td>${u.hold?'<span class="chip hold">Hold</span>':""}</td></tr>`).join(""):`<tr><td colspan="6" class="empty">No units inside.</td></tr>`}</tbody></table></div>${inside.length>300?`<p class="note">Showing the oldest 300 of ${inside.length}.</p>`:""}</div>`;
+}
+function tcfInsideSet(){ // units counted as inside TCF: on the 37-station conveyor, or held (offline). Older units pushed off the end count as lined off.
+  const rp=tcfReplay(); return new Set(Object.values(units).filter(u=>u.scans&&u.scans.TI&&!u.scans.TO&&((u.vin in rp.where)||u.hold)).map(u=>u.vin));
+}
+function renderDashboard(){
+  if($("view-dashboard").hidden)return;
+  const today=prodDay(Date.now()); const sf=$("f-shift").value;
+  $("dash-date").textContent="Production day "+new Date(today+"T12:00").toLocaleDateString([], {weekday:"long",day:"numeric",month:"long"})+" · Shift A 08:00–16:30, Shift B 16:30–01:00";
+  const all=Object.values(units);
+  const tcfIn=tcfInsideSet();
+  const inToday=(u,s)=>{const e=u.scans&&u.scans[s];return e&&e.day===today&&(!sf||e.shift===sf)};
+  // Flow cards
+  $("flow").innerHTML=LINES.map((ln,li)=>{
+    const si=STATIONS[li*2].id, so=STATIONS[li*2+1].id;
+    const nIn=all.filter(u=>inToday(u,si)).length, nOut=all.filter(u=>inToday(u,so)).length;
+    const insd=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]&&(li!==2||tcfIn.has(u.vin))); const wip=insd.length;
+    const held=insd.filter(u=>u.hold).length;
+    return `<a class="line-card" href="#shop-${ln.toLowerCase()}" aria-label="Open the ${ln} dashboard"><h3>${ln} ${held?`<span class="chip hold">${held} hold</span>`:""}</h3>
+      <div class="io-row"><div><div class="label">In</div><div class="n">${nIn}</div></div><div><div class="label">Out</div><div class="n">${nOut}</div></div><div class="wip"><div class="label">Inside</div><div class="n">${wip}</div></div></div></a>`}).join("");
   // Hold
   const holds=all.filter(u=>u.hold).sort((a,b)=>a.holdAt-b.holdAt);
   $("hold-count").textContent=holds.length;
@@ -1055,8 +1097,8 @@ $("export-btn").addEventListener("click",async()=>{
 function setConn(state,txt){$("conn-dot").className="dot "+(state||"");$("conn-txt").textContent=txt}
 $("tcf-fs").addEventListener("click",()=>{const el=document.querySelector(".tcfv");if(document.fullscreenElement){document.exitFullscreen()}else if(el.requestFullscreen){el.requestFullscreen().catch(()=>toast("Full screen is not available here"))}else toast("Full screen is not supported on this browser")});
 document.addEventListener("fullscreenchange",()=>{$("tcf-fs").textContent=document.fullscreenElement?"Exit full screen":"Full screen"});
-function renderAll(){renderStationList();renderDashboard();renderPlant()}
-setInterval(()=>{renderPlant(); if(!$("view-dashboard").hidden||document.fullscreenElement)renderDashboard(); if(station)$("st-shift").textContent="Shift "+shiftOf(Date.now())},60000);
+function renderAll(){renderStationList();renderDashboard();renderPlant();renderShop()}
+setInterval(()=>{renderPlant();renderShop(); if(!$("view-dashboard").hidden||document.fullscreenElement)renderDashboard(); if(station)$("st-shift").textContent="Shift "+shiftOf(Date.now())},60000);
 route();
 /* ---------- Supabase ---------- */
 const SB_URL="https://rcghnjftvdgwwejznpsz.supabase.co", SB_KEY="sb_publishable_mz70FZbbh1fILXLyN7Ay-w_U9mJgT6J";
