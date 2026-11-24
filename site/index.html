@@ -308,6 +308,7 @@ const STATIONS=[
   {id:"QI",line:"QC",io:"In"},{id:"QO",line:"QC",io:"Out"}];
 const ST=Object.fromEntries(STATIONS.map((s,i)=>[s.id,{...s,i,name:s.line+" "+s.io}]));
 const LINES=["Body","Paint","TCF","QC"];
+const BODY_COLORS=["WYW","NPG","NUG","RBG","CBP","NKW","MOG","NDB","2RP","NMG","NT2","XB2","R8N","R2F","SMH","TB5"]; // codes seen on the line; use Other for any new one
 const ISSUE_TYPES=["Body dent / scratch","Paint defect","Missing part","Fitment / gap","Electrical","Water leak","Torque / fastening","Other"];
 
 // VIN characters 1–9 → variant. "choose" = same VIN structure, operator selects at Body In.
@@ -578,12 +579,20 @@ function renderPending(){
       <div class="row" style="margin-top:10px"><button class="primary" type="button" data-act="force">Log anyway</button><button type="button" data-act="cancel">Cancel</button></div>`);
     setTimeout(()=>$("seq-reason")&&$("seq-reason").focus(),30);
     return}
+  if(station==="PO"&&!p.color&&!p.colorSkip&&!(units[p.vin]&&units[p.vin].color)){
+    showResult("warn","Body color",`<div class="big">${p.vin}</div><div>${esc(p.variant)}</div><p style="margin:6px 0 10px">Choose the body color of this vehicle:</p>
+      <div class="choices">${BODY_COLORS.map(c=>`<button type="button" data-color="${c}">${c}</button>`).join("")}</div>
+      <div class="row" style="margin-top:10px"><input id="color-other" placeholder="Other code" maxlength="8" style="width:130px;text-transform:uppercase"><button type="button" data-act="color-other">Use</button><button type="button" data-act="color-skip">Skip</button><button type="button" data-act="cancel">Cancel</button></div>`);
+    return}
   commitScan();
 }
 
 $("result").addEventListener("click",async e=>{
   const b=e.target.closest("button"); if(!b)return;
   if(b.dataset.variant&&pending){pending.variant=b.dataset.variant;pending.choices=null;renderPending();return}
+  if(b.dataset.color&&pending){pending.color=b.dataset.color;renderPending();return}
+  if(b.dataset.act==="color-other"&&pending){const c=$("color-other").value.trim().toUpperCase();if(!c){toast("Enter a color code");return}pending.color=c;renderPending();return}
+  if(b.dataset.act==="color-skip"&&pending){pending.colorSkip=true;renderPending();return}
   const act=b.dataset.act;
   if(act==="cancel"){pending=null;$("result").innerHTML="";refocus();}
   if(act==="force"&&pending){const r=$("seq-reason").value.trim(); if(!r){toast("Enter a reason");return} pending.remark=r; pending.seqWarn=""; commitScan()}
@@ -595,13 +604,15 @@ $("result").addEventListener("click",async e=>{
 async function commitScan(){
   const p=pending; pending=null; const now=Date.now();
   const entry={t:now,by:operator||"",shift:shiftOf(now),day:prodDay(now)}; if(p.remark)entry.remark=p.remark;
+  if(p.color)entry.color=p.color;
   const ref=db.collection("units").doc(p.vin);
   try{
     if(!p.exists){
-      await ref.set({vin:p.vin,variant:p.variant,model:p.variant.split(" ")[0],scans:{[station]:entry},hold:false,issues:[],holdLog:[],createdAt:now,updatedAt:now,last:station});
+      await ref.set({vin:p.vin,variant:p.variant,model:p.variant.split(" ")[0],scans:{[station]:entry},hold:false,issues:[],holdLog:[],createdAt:now,updatedAt:now,last:station,...(p.color?{color:p.color}:{})});
     } else {
       const patch={scans:{[station]:entry},updatedAt:now,last:STATIONS[Math.max(ST[station].i,ST[lastStation(units[p.vin])||station].i)].id};
       if(!units[p.vin].variant)patch.variant=p.variant;
+      if(p.color)patch.color=p.color;
       await ref.update(patch);
     }
     const u=units[p.vin];
@@ -750,7 +761,7 @@ function renderDashboard(){
     $("tcf-line").innerHTML=grp.map(([g,names])=>`<div class="tcf-grp g-${g.toLowerCase()}"><div class="tcf-lab">${g}</div><div class="tcf-cards">${names.map(nm=>{
       const u=inside[n++];
       if(!u)return `<div class="tcf-c empty"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">Empty</div></div>`;
-      return `<div class="tcf-c${u.hold?" hold":""}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="tm">${fmtT(u.scans.TI.t)} · ${fmtDur(Date.now()-u.scans.TI.t)}</div></div>`}).join("")}</div></div>`).join("")
+      return `<div class="tcf-c${u.hold?" hold":""}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="vr">${u.color?"Color: "+esc(u.color):"Color: -"}</div><div class="tm">${fmtT(u.scans.TI.t)} · ${fmtDur(Date.now()-u.scans.TI.t)}</div></div>`}).join("")}</div></div>`).join("")
       +(inside.length>37?`<div class="tcfnote" style="margin-top:10px">${inside.length-37} more unit(s) scanned into TCF are beyond the 37 stations, check for missing TCF Out scans.</div>`:"");
     $("tcf-count").textContent=inside.length+" in TCF";
   })();
