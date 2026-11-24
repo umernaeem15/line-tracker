@@ -101,6 +101,13 @@ body{margin:0}[hidden]{display:none!important}
 .tcf-st h4{margin:0;font-size:13px;letter-spacing:.08em;color:#B9CBE3;min-width:92px}
 .tcf-st .n{font-size:30px;font-weight:800;color:#fff;line-height:1}.tcf-st .l{font-size:11px;color:#B9CBE3;letter-spacing:.06em;text-transform:uppercase}
 .tcf-st .sh{border-left:1px solid rgba(185,203,227,.3);padding-left:16px}
+.tcf-mt{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px;color:#fff}
+.tcf-mt th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#B9CBE3;text-align:right;padding:6px 10px;border-bottom:1px solid #00AAD2;font-weight:600}
+.tcf-mt td{text-align:right;padding:7px 10px;border-bottom:1px solid rgba(185,203,227,.18);font-variant-numeric:tabular-nums}
+.tcf-mt th:first-child,.tcf-mt td:first-child{text-align:left;font-weight:700}
+.tcf-mt .gh{text-align:center;border-bottom:0;color:#fff;letter-spacing:.08em}
+.tcf-mt tfoot td{font-weight:800;border-top:2px solid #00AAD2;border-bottom:0}
+.tcfv:fullscreen .tcf-mt{font-size:17px}
 .tcfv:fullscreen .tcf-st .n{font-size:40px}
 .tcf-grp+.tcf-grp{margin-top:48px;position:relative}
 .tcf-grp+.tcf-grp::before{content:"";position:absolute;left:0;right:0;top:-25px;height:3px;background:linear-gradient(90deg,var(--gc),var(--gc) 60%,transparent);opacity:.9}
@@ -295,6 +302,7 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
     <div class="tcfv" style="margin-top:16px">
       <div class="row" style="justify-content:space-between"><div><h2 style="color:#fff">TCF line view, station by station</h2><p class="tcfnote">Units inside TCF in the order they were scanned In. The newest is at T-1 and the oldest is next to leave at F-9.</p></div><div class="row" style="gap:10px"><span class="tcfnote" id="tcf-upd"></span><span class="chip count" id="tcf-count" style="background:#06376F;color:#fff;border-color:#00AAD2">0</span><button type="button" id="tcf-fs" style="background:transparent;color:#B9CBE3;border:1px solid rgba(185,203,227,.35);font-size:12px;font-weight:500;padding:4px 10px;min-height:0;height:auto">Full screen</button></div></div>
       <div id="tcf-stats" class="tcf-stats"></div>
+      <div id="tcf-models"></div>
       <div id="tcf-line"></div>
     </div>
 
@@ -846,6 +854,10 @@ No vehicle"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">
     $("tcf-line").innerHTML+=`<div class="tcf-off"><div class="tcf-offh">OFFLINE <span>(held, taken off the conveyor)</span><b>${off.length}</b></div>`+(off.length?`<div class="tcf-cards">${off.map(u=>`<div class="tcf-c hold" style="${tileStyle(u.color)}" data-tip="${tip(u,"Offline, left from "+(u.holdTcf||SN[full.indexOf(u)]||"TCF"))}"><span class="nm">Off from ${esc(u.holdTcf||SN[full.indexOf(u)]||"TCF")}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(colorName(u.color))}">${u.color?esc(u.color):"-"}</div><div class="tm">${esc(u.holdReason||"")}</div><div class="tm">Offline ${fmtDur(Date.now()-(u.holdAt||Date.now()))}</div></div>`).join("")}</div>`:`<div class="tcfnote">No units offline.</div>`)+`</div>`;
     const cnt=(s)=>{const o={t:0,A:0,B:0};all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){o.t++;o[e.shift]=(o[e.shift]||0)+1}});return o};
     const blk=(t,o)=>`<div class="tcf-st"><h4>${t}</h4><div><div class="l">Today</div><div class="n">${o.t}</div></div><div class="sh"><div class="l">Shift A</div><div class="n">${o.A}</div></div><div class="sh"><div class="l">Shift B</div><div class="n">${o.B}</div></div></div>`;
+    const mm={};const bump=(s,k)=>all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){const m=mm[u.variant||"Unknown"]=mm[u.variant||"Unknown"]||{i:{t:0,A:0,B:0},o:{t:0,A:0,B:0}};m[k].t++;m[k][e.shift]=(m[k][e.shift]||0)+1}});bump("TI","i");bump("TO","o");
+    const rows=Object.entries(mm).sort((a,b)=>(b[1].i.t+b[1].o.t)-(a[1].i.t+a[1].o.t)); const tot={i:{t:0,A:0,B:0},o:{t:0,A:0,B:0}};rows.forEach(([n,m])=>["i","o"].forEach(k=>["t","A","B"].forEach(f=>tot[k][f]+=m[k][f])));
+    const c3=(o)=>`<td>${o.t}</td><td>${o.A}</td><td>${o.B}</td>`;
+    $("tcf-models").innerHTML=rows.length?`<table class="tcf-mt"><thead><tr><th rowspan="2">Model, today</th><th class="gh" colspan="3">Line in (TCF In)</th><th class="gh" colspan="3">Line off (TCF Out)</th></tr><tr><th>Total</th><th>Shift A</th><th>Shift B</th><th>Total</th><th>Shift A</th><th>Shift B</th></tr></thead><tbody>${rows.map(([n,m])=>`<tr><td>${esc(n)}</td>${c3(m.i)}${c3(m.o)}</tr>`).join("")}</tbody><tfoot><tr><td>All models</td>${c3(tot.i)}${c3(tot.o)}</tr></tfoot></table>`:`<div class="tcfnote" style="margin-top:10px">No model has moved through TCF yet today.</div>`;
     $("tcf-stats").innerHTML=blk("LINE IN (TCF In)",cnt("TI"))+blk("LINE OFF (TCF Out)",cnt("TO"));
     $("tcf-count").textContent=inside.length+" on line";
     $("tcf-upd").textContent="Updated "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})+" · refreshes every 60 s";
