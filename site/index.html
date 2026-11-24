@@ -129,6 +129,41 @@ body{margin:0}[hidden]{display:none!important}
 .tcfnote{margin:4px 0 0;color:#B9CBE3;font-size:13.5px}
 .tcf-grp{display:grid;grid-template-columns:34px 1fr;gap:10px;margin-top:12px}
 .g-trim{--gc:#00AAD2;--gbg:#06376F;--gtag:#002C5F}.g-chassis{--gc:#FFFFFF;--gbg:#0E4F86;--gtag:#06376F}.g-final{--gc:#E4DCD3;--gbg:#4B4339;--gtag:#2F2A24}
+.plantv{background:#002C5F;border:1px solid #00AAD2;padding:18px;color:#e6edf8}
+.plantv h2{color:#fff;margin:0}
+.pl-top{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.pl-kpi{background:#06376F;border:1px solid #00AAD2;padding:10px 14px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.pl-kpi h4{margin:0;font-size:12px;letter-spacing:.08em;color:#B9CBE3;min-width:110px}
+.pl-kpi .n{font-size:30px;font-weight:800;color:#fff;line-height:1}.pl-kpi .l{font-size:11px;color:#B9CBE3;letter-spacing:.06em;text-transform:uppercase}
+.pl-kpi .sh{border-left:1px solid rgba(185,203,227,.3);padding-left:16px}
+.pl-cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:14px}
+.pl-card{background:#06376F;border:3px solid var(--ac);padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.pl-card h3{margin:0;color:var(--ac);font-size:15px;letter-spacing:.1em;text-transform:uppercase}
+.pl-card .big{font-size:54px;font-weight:800;color:#fff;line-height:1}
+.pl-card .sub{font-size:12px;color:#B9CBE3;letter-spacing:.06em;text-transform:uppercase}
+.pl-io{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pl-io>div{background:rgba(0,0,0,.18);padding:6px 10px}
+.pl-io .v{font-size:20px;font-weight:800;color:#fff}.pl-io .ab{font-size:11px;color:#B9CBE3}
+.pl-mod{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0}
+.pl-mod .r{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:8px;align-items:center;font-size:13px;color:#fff}
+.pl-mod .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-mod .bar{height:5px;background:var(--ac);opacity:.9;grid-column:1/-1;margin-top:-3px}
+.pl-mod .c{text-align:right;font-weight:700}
+.pl-foot{font-size:12px;color:#B9CBE3;border-top:1px solid rgba(185,203,227,.25);padding-top:8px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pl-foot b{color:#fff}.pl-hold{color:#ff8a8a!important}
+@media(max-width:1100px){.pl-cols{grid-template-columns:repeat(2,minmax(0,1fr))}.pl-top{grid-template-columns:1fr}}
+@media(max-width:600px){.pl-cols{grid-template-columns:1fr}}
+.plantv:fullscreen{display:flex;flex-direction:column;height:100vh;box-sizing:border-box;padding:1.4vh 1.4vw;overflow:hidden;gap:1.2vh}
+.plantv:fullscreen .pl-top{margin:0;gap:1vw}
+.plantv:fullscreen .pl-cols{margin:0;gap:1vw;flex:1 1 0;min-height:0;grid-template-columns:repeat(4,minmax(0,1fr))}
+.plantv:fullscreen .pl-card{padding:1.2vh 1vw;gap:1.2vh;min-height:0;overflow:hidden}
+.plantv:fullscreen .pl-kpi{padding:.8vh 1vw}
+.plantv:fullscreen .pl-kpi .n{font-size:clamp(20px,4vh,44px)}
+.plantv:fullscreen .pl-kpi h4,.plantv:fullscreen .pl-card h3{font-size:clamp(11px,1.8vh,18px)}
+.plantv:fullscreen .pl-card .big{font-size:clamp(34px,9vh,96px)}
+.plantv:fullscreen .pl-io .v{font-size:clamp(16px,3.2vh,34px)}
+.plantv:fullscreen .pl-io .ab,.plantv:fullscreen .pl-card .sub,.plantv:fullscreen .pl-foot{font-size:clamp(10px,1.6vh,16px)}
+.plantv:fullscreen .pl-mod .r{font-size:clamp(11px,1.9vh,20px)}
 .tcf-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
 .tcf-st{background:#06376F;border:1px solid #00AAD2;padding:10px 14px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .tcf-st h4{margin:0;font-size:13px;letter-spacing:.08em;color:#B9CBE3;min-width:92px}
@@ -231,6 +266,7 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
   <div class="brand">HYUNDAI<i></i>NISHAT</div>
   <nav class="tabs" aria-label="Views">
     <a href="#station" id="tab-station" aria-label="Station scan" title="Station scan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8"/></svg></a>
+    <a href="#plant" id="tab-plant" aria-label="Plant overview" title="Plant overview"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 21V9l6 4V9l6 4V5h6v16z"/></svg></a>
     <a href="#dashboard" id="tab-dashboard" aria-label="Dashboard" title="Dashboard"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></a>
     <a href="#import" id="tab-import" hidden aria-label="Import ZVIS WIP" title="Import ZVIS WIP"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg></a>
     <a href="#users" id="tab-users" hidden aria-label="User accounts" title="User accounts"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14.4c2.2.7 3.5 2.6 3.5 5.6"/></svg></a>
@@ -327,6 +363,16 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
       <div class="note">ZVIS has dates but no times, so units are ordered within a day by batch number. Imported scans carry no shift.</div>
     </div>
     <div id="z-preview" style="margin-top:16px;max-width:900px"></div>
+  </section>
+
+  <!-- PLANT OVERVIEW VIEW -->
+  <section id="view-plant" hidden>
+    <div class="plantv" id="plantv">
+      <div class="row" style="justify-content:space-between"><div><h2>Plant overview, all locations</h2><div class="tcfnote" id="pl-note">Units inside each location right now, and today's movement</div></div>
+        <div class="row" style="gap:10px"><span class="tcfnote" id="pl-upd"></span><button type="button" id="pl-fs" style="background:transparent;color:#B9CBE3;border:1px solid rgba(185,203,227,.35);font-size:12px;font-weight:500;padding:4px 10px;min-height:0;height:auto">Full screen</button></div></div>
+      <div class="pl-top" id="pl-top"></div>
+      <div class="pl-cols" id="pl-cols"></div>
+    </div>
   </section>
 
   <!-- DASHBOARD VIEW -->
@@ -479,13 +525,14 @@ let pending=null; // scan waiting for variant choice / sequence confirmation
 let signedIn=false, authChecked=false;
 function route(){
   $("view-login").hidden=signedIn||!authChecked;
-  if(!signedIn){$("view-station").hidden=true;$("view-dashboard").hidden=true;$("view-users").hidden=true;$("view-import").hidden=true;return}
-  const v=location.hash==="#dashboard"?"dashboard":(location.hash==="#users"&&isAdmin?"users":(location.hash==="#import"&&isAdmin?"import":"station"));
-  $("view-station").hidden=v!=="station"; $("view-dashboard").hidden=v!=="dashboard"; $("view-users").hidden=v!=="users"; $("view-import").hidden=v!=="import";
+  if(!signedIn){$("view-station").hidden=true;$("view-dashboard").hidden=true;$("view-users").hidden=true;$("view-import").hidden=true;$("view-plant").hidden=true;return}
+  const v=location.hash==="#dashboard"?"dashboard":location.hash==="#plant"?"plant":(location.hash==="#users"&&isAdmin?"users":(location.hash==="#import"&&isAdmin?"import":"station"));
+  $("view-station").hidden=v!=="station"; $("view-dashboard").hidden=v!=="dashboard"; $("view-users").hidden=v!=="users"; $("view-import").hidden=v!=="import"; $("view-plant").hidden=v!=="plant";
   $("tab-users").hidden=!isAdmin; $("tab-import").hidden=!isAdmin;
-  $("tab-station").toggleAttribute("aria-current",false); $("tab-dashboard").toggleAttribute("aria-current",false); $("tab-users").toggleAttribute("aria-current",false); $("tab-import").toggleAttribute("aria-current",false);
+  $("tab-station").toggleAttribute("aria-current",false); $("tab-dashboard").toggleAttribute("aria-current",false); $("tab-users").toggleAttribute("aria-current",false); $("tab-import").toggleAttribute("aria-current",false); $("tab-plant").toggleAttribute("aria-current",false);
   $("tab-"+v).setAttribute("aria-current","page");
   if(v==="users")loadUsers();
+  if(v==="plant")renderPlant();
   if(v==="station"){renderStationSetup(); setTimeout(()=>{if(!$("vin-input").closest("[hidden]"))$("vin-input").focus()},50)}
   else renderDashboard();
 }
@@ -1004,8 +1051,8 @@ $("export-btn").addEventListener("click",async()=>{
 function setConn(state,txt){$("conn-dot").className="dot "+(state||"");$("conn-txt").textContent=txt}
 $("tcf-fs").addEventListener("click",()=>{const el=document.querySelector(".tcfv");if(document.fullscreenElement){document.exitFullscreen()}else if(el.requestFullscreen){el.requestFullscreen().catch(()=>toast("Full screen is not available here"))}else toast("Full screen is not supported on this browser")});
 document.addEventListener("fullscreenchange",()=>{$("tcf-fs").textContent=document.fullscreenElement?"Exit full screen":"Full screen"});
-function renderAll(){renderStationList();renderDashboard()}
-setInterval(()=>{if(!$("view-dashboard").hidden||document.fullscreenElement)renderDashboard(); if(station)$("st-shift").textContent="Shift "+shiftOf(Date.now())},60000);
+function renderAll(){renderStationList();renderDashboard();renderPlant()}
+setInterval(()=>{renderPlant(); if(!$("view-dashboard").hidden||document.fullscreenElement)renderDashboard(); if(station)$("st-shift").textContent="Shift "+shiftOf(Date.now())},60000);
 route();
 /* ---------- Supabase ---------- */
 const SB_URL="https://rcghnjftvdgwwejznpsz.supabase.co", SB_KEY="sb_publishable_mz70FZbbh1fILXLyN7Ay-w_U9mJgT6J";
@@ -1032,6 +1079,32 @@ $("login-form").addEventListener("submit",async e=>{
   if(error){$("login-msg").textContent="Sign-in failed: "+error.message;return}
   location.reload();
 });
+/* ---------- Plant overview (all locations) ---------- */
+const PL_LOCS=[["Body","BI","BO","#00AAD2","Paint In"],["Paint","PI","PO","#E4DCD3","TCF In"],["TCF","TI","TO","#FFFFFF","Inspection In"],["Inspection","QI","QO","#8FB4E3","Line-off"]];
+function renderPlant(){
+  if($("view-plant").hidden)return;
+  const today=prodDay(Date.now()), all=Object.values(units);
+  const cnt=s=>{const o={t:0,A:0,B:0};all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){o.t++;o[e.shift]=(o[e.shift]||0)+1}});return o};
+  const kpi=(t,o)=>`<div class="pl-kpi"><h4>${t}</h4><div><div class="l">Today</div><div class="n">${o.t}</div></div><div class="sh"><div class="l">Shift A</div><div class="n">${o.A}</div></div><div class="sh"><div class="l">Shift B</div><div class="n">${o.B}</div></div></div>`;
+  const wip=all.filter(u=>u.scans&&u.scans.BI&&!u.scans.QO).length;
+  $("pl-top").innerHTML=`<div class="pl-kpi"><h4>TOTAL WIP IN PLANT</h4><div><div class="l">Body In to QC Out</div><div class="n">${wip}</div></div></div>`+kpi("LINE IN (Body In)",cnt("BI"))+kpi("LINE OFF (QC Out)",cnt("QO"));
+  $("pl-cols").innerHTML=PL_LOCS.map(([name,si,so,ac,next],i)=>{
+    const inside=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]);
+    const held=inside.filter(u=>u.hold).length;
+    const mm={}; inside.forEach(u=>{const k=u.variant||"Unknown";mm[k]=(mm[k]||0)+1});
+    const rows=Object.entries(mm).sort((a,b)=>b[1]-a[1]); const mx=Math.max(1,...rows.map(r=>r[1]));
+    const wait=i<3?all.filter(u=>u.scans&&u.scans[so]&&!(u.scans[PL_LOCS[i+1][1]])).length:null;
+    const ci=cnt(si), co=cnt(so);
+    const oldest=inside.length?Math.min(...inside.map(u=>u.scans[si].t)):null;
+    return `<div class="pl-card" style="--ac:${ac}"><h3>${name}</h3>
+      <div><div class="big">${inside.length}</div><div class="sub">Inside now${held?` · <span class="pl-hold">${held} on hold</span>`:""}</div></div>
+      <div class="pl-io"><div><div class="sub">${name} In today</div><div class="v">${ci.t}</div><div class="ab">A ${ci.A} · B ${ci.B}</div></div><div><div class="sub">${name} Out today</div><div class="v">${co.t}</div><div class="ab">A ${co.A} · B ${co.B}</div></div></div>
+      <div class="pl-mod">${rows.length?rows.slice(0,9).map(([m,n])=>`<div class="r"><span class="t" title="${esc(m)}">${esc(m)}</span><span class="c">${n}</span><div class="bar" style="width:${n/mx*100}%"></div></div>`).join("")+(rows.length>9?`<div class="sub">+${rows.length-9} more models</div>`:""):`<div class="sub">Nothing inside</div>`}</div>
+      <div class="pl-foot"><span>${wait==null?"":`Waiting for ${next}: <b>${wait}</b>`}</span><span>${oldest?`Oldest inside: <b>${fmtDur(Date.now()-oldest)}</b>`:""}</span></div></div>`}).join("");
+  $("pl-upd").textContent="Updated "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})+" · refreshes every 60 s";
+}
+$("pl-fs").addEventListener("click",()=>{const el=$("plantv");if(document.fullscreenElement){document.exitFullscreen()}else if(el.requestFullscreen){el.requestFullscreen().catch(()=>toast("Full screen is not available here"))}else toast("Full screen is not supported on this browser")});
+document.addEventListener("fullscreenchange",()=>{$("pl-fs").textContent=document.fullscreenElement&&document.fullscreenElement.id==="plantv"?"Exit full screen":"Full screen"});
 /* ---------- Admin: ZVIS WIP import ---------- */
 const ZV_DESC={
  "ELANTRA 1591CC 6A/T SR HIGH":"Hyundai AD High","ELANTRA 1591CC 6A/T SR (BEIG)":"Hyundai AD BEIG","ELANTRA 1591CC 6A/T SR (BUR)":"Hyundai AD BUR","ELANTRA 1591CC 6A/T SR (CAP)":"Hyundai AD CAP",
