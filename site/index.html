@@ -96,7 +96,7 @@ body{margin:0}[hidden]{display:none!important}
 .tcfnote{margin:4px 0 0;color:#B9CBE3;font-size:13.5px}
 .tcf-grp{display:grid;grid-template-columns:34px 1fr;gap:10px;margin-top:12px}
 .g-trim{--gc:#00AAD2;--gbg:#06376F;--gtag:#002C5F}.g-chassis{--gc:#FFFFFF;--gbg:#0E4F86;--gtag:#06376F}.g-final{--gc:#E4DCD3;--gbg:#4B4339;--gtag:#2F2A24}
-.tcf-lab{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-weight:800;letter-spacing:.12em;color:var(--gc);font-size:13px;background:var(--gtag);border:1px solid var(--gc)}
+.tcf-lab{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:800;letter-spacing:.12em;color:var(--gc);font-size:13px;background:var(--gtag);border:1px solid var(--gc)}
 .tcf-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px}
 @media(min-width:1100px){.tcf-cards{grid-template-columns:repeat(10,minmax(0,1fr))}}
 .tcf-c{background:var(--gbg);border:1px solid var(--gc);padding:8px;min-width:0;position:relative}
@@ -755,7 +755,7 @@ function renderDashboard(){
   // TCF station line view: units inside TCF, newest In = TRIM 01, oldest = FINAL 09
   (function(){
     const inside=all.filter(u=>u.scans&&u.scans.TI&&!u.scans.TO).sort((a,b)=>b.scans.TI.t-a.scans.TI.t);
-    const grp=[["TRIM",[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANORAMA",...Array.from({length:15},(_,i)=>"T-"+(i+5))]],
+    const grp=[["TRIM",[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5))]],
       ["CHASSIS",Array.from({length:8},(_,i)=>"C-"+(i+1))],
       ["FINAL",Array.from({length:9},(_,i)=>"F-"+(i+1))]];
     let n=0;
