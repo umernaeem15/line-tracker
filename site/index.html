@@ -232,6 +232,7 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
   <nav class="tabs" aria-label="Views">
     <a href="#station" id="tab-station" aria-label="Station scan" title="Station scan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8"/></svg></a>
     <a href="#dashboard" id="tab-dashboard" aria-label="Dashboard" title="Dashboard"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></a>
+    <a href="#import" id="tab-import" hidden aria-label="Import ZVIS WIP" title="Import ZVIS WIP"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg></a>
     <a href="#users" id="tab-users" hidden aria-label="User accounts" title="User accounts"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14.4c2.2.7 3.5 2.6 3.5 5.6"/></svg></a>
   </nav>
   <div class="conn" title="Connection to the scan log"><span class="dot" id="conn-dot"></span><span id="conn-txt">Connecting…</span></div>
@@ -316,6 +317,16 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
       <div class="row" style="justify-content:space-between"><h2>All users</h2><span class="chip count" id="u-count">0</span></div>
       <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last sign-in</th><th></th></tr></thead><tbody id="u-body"></tbody></table></div>
     </div>
+  </section>
+
+  <!-- IMPORT VIEW (admin only) -->
+  <section id="view-import" hidden>
+    <div><h1 style="font-size:26px">Import ZVIS WIP</h1><div class="note">Load the ZVIS work-in-progress Excel export to bring units and their stage dates into the tracker. Safe to run again with a newer export.</div></div>
+    <div class="panel stack" style="margin-top:16px;max-width:720px">
+      <div><label class="label" for="z-file">ZVIS WIP file (.xlsx)</label><input id="z-file" type="file" accept=".xlsx,.xls"></div>
+      <div class="note">ZVIS has dates but no times, so units are ordered within a day by batch number. Imported scans carry no shift.</div>
+    </div>
+    <div id="z-preview" style="margin-top:16px;max-width:900px"></div>
   </section>
 
   <!-- DASHBOARD VIEW -->
@@ -468,11 +479,11 @@ let pending=null; // scan waiting for variant choice / sequence confirmation
 let signedIn=false, authChecked=false;
 function route(){
   $("view-login").hidden=signedIn||!authChecked;
-  if(!signedIn){$("view-station").hidden=true;$("view-dashboard").hidden=true;$("view-users").hidden=true;return}
-  const v=location.hash==="#dashboard"?"dashboard":(location.hash==="#users"&&isAdmin?"users":"station");
-  $("view-station").hidden=v!=="station"; $("view-dashboard").hidden=v!=="dashboard"; $("view-users").hidden=v!=="users";
-  $("tab-users").hidden=!isAdmin;
-  $("tab-station").toggleAttribute("aria-current",false); $("tab-dashboard").toggleAttribute("aria-current",false); $("tab-users").toggleAttribute("aria-current",false);
+  if(!signedIn){$("view-station").hidden=true;$("view-dashboard").hidden=true;$("view-users").hidden=true;$("view-import").hidden=true;return}
+  const v=location.hash==="#dashboard"?"dashboard":(location.hash==="#users"&&isAdmin?"users":(location.hash==="#import"&&isAdmin?"import":"station"));
+  $("view-station").hidden=v!=="station"; $("view-dashboard").hidden=v!=="dashboard"; $("view-users").hidden=v!=="users"; $("view-import").hidden=v!=="import";
+  $("tab-users").hidden=!isAdmin; $("tab-import").hidden=!isAdmin;
+  $("tab-station").toggleAttribute("aria-current",false); $("tab-dashboard").toggleAttribute("aria-current",false); $("tab-users").toggleAttribute("aria-current",false); $("tab-import").toggleAttribute("aria-current",false);
   $("tab-"+v).setAttribute("aria-current","page");
   if(v==="users")loadUsers();
   if(v==="station"){renderStationSetup(); setTimeout(()=>{if(!$("vin-input").closest("[hidden]"))$("vin-input").focus()},50)}
@@ -757,7 +768,8 @@ const PREFIX12={"CN7 NNB":"PMHCS41JVTN6","CN7 SSS":"PMHCS41JVTN6","DN8 2.5L":"PM
   "NX4 2WD":"PMHJB811MTN7","NX4 4WD":"PMHJB811STN7","TM 2WD":"PMHS3811MTN5","TM 4WD MMX":"PMHS3811STN5","TM 4WD NNB":"PMHS3811STN5",
   "LX3 CAL ISB":"PMHRM81ASTN9","LX3 CAL 3NB":"PMHRM81ASTN9","LX3 SMT NNB":"PMHRH81ASTN9",
   "Jaecoo J5 HEV Comfort":"MCCJV7HRCTN2","Jaecoo J5 HEV Premium":"MCCJV7HRMTN2","Jaecoo J7 PHEV Premium":"MCCJY7PRMTN1","Omoda C7 PHEV Premium":"MCCDY7PRMTN3",
-  "Porter S7 FD":"PMFZBF7BLTN1","Porter S7 HD":"PMFZBX7BLTN1","Porter S7 HD AC":"PMFZBX7BLTN1","Porter Deckless":"PMFZBX7BLTN1"};
+  "Hyundai AD High":"PMHD841CMTN3","Hyundai AD BEIG":"PMHD841CMTN3","Hyundai AD BUR":"PMHD841CMTN3","Hyundai AD CAP":"PMHD841CMTN3","DN8 N Line":"PMHF641CMTN4",
+  "Jaecoo J5 HEV Black":"MCCJV7HRMTN2","Jaecoo J5 HEV Gray":"MCCJV7HRMTN2","TM 2WD":"PMHS3811MTN5","Porter S7 FD":"PMFZBF7BLTN1","Porter S7 HD":"PMFZBX7BLTN1","Porter S7 HD AC":"PMFZBX7BLTN1","Porter Deckless":"PMFZBX7BLTN1"};
 function qmFill(){
   const inp=$("vin-input"); inp.value=quickModel?qmPrefix(quickModel):"";
   setTimeout(()=>{inp.focus();const n=inp.value.length;try{inp.setSelectionRange(n,n)}catch(e){}},30);
@@ -971,9 +983,10 @@ function showVin(vin){
   const tl=STATIONS.map(s=>{const e=u.scans&&u.scans[s.id];return `<div class="tl ${e?"done":""}"><b>${s.line} ${s.io}</b>${e?`<span class="mono">${fmtDT(e.t)}</span><div class="note">${esc(e.by||"")}${e.remark?" · "+esc(e.remark):""}</div>`:'<span class="muted">—</span>'}</div>`}).join("");
   const hl=(u.holdLog||[]).map(h=>`<li>${fmtDT(h.t)} · <b>${h.a==="hold"?"Hold":"Released"}</b> at ${esc(h.st?ST[h.st].name:"dashboard")} · ${esc(h.r)} <span class="note">${esc(h.by||"")}</span></li>`).join("");
   const rl=(u.revertLog||[]).map(h=>`<li>${fmtDT(h.t)} · <b>Reverted</b> ${esc(ST[h.from]?ST[h.from].name:"")} · ${esc(h.r)} <span class="note">${esc(h.by||"")}</span></li>`).join("");
+  const zn=u.zvis&&u.zvis.remark?`<h3 style="margin-top:12px">Notes (from ZVIS)</h3><ul><li>${esc(u.zvis.remark)}</li></ul>`:"";
   const il=(u.issues||[]).map(i=>`<li>${fmtDT(i.t)} · <b>${esc(i.type)}</b> at ${esc(i.st?ST[i.st].name:"")} · ${esc(i.text)} <span class="note">${esc(i.by||"")}</span></li>`).join("");
   $("vin-detail").innerHTML=`<div class="panel" style="margin-top:14px;background:var(--bg)"><div class="row" style="justify-content:space-between"><div><div class="mono" style="font-size:18px;font-weight:600">${u.vin}</div><div>${esc(u.variant)}</div></div>${u.hold?`<span class="chip hold">On hold: ${esc(u.holdReason)}</span>`:""}${lastStation(u)?`<button type="button" data-revert="${u.vin}">Revert last scan</button>`:""}</div>
-    <div class="timeline">${tl}</div>${hl?`<h3 style="margin-top:12px">Hold history</h3><ul>${hl}</ul>`:""}${il?`<h3 style="margin-top:12px">Issues</h3><ul>${il}</ul>`:""}${rl?`<h3 style="margin-top:12px">Reverted scans</h3><ul>${rl}</ul>`:""}</div>`;
+    <div class="timeline">${tl}</div>${hl?`<h3 style="margin-top:12px">Hold history</h3><ul>${hl}</ul>`:""}${il?`<h3 style="margin-top:12px">Issues</h3><ul>${il}</ul>`:""}${rl?`<h3 style="margin-top:12px">Reverted scans</h3><ul>${rl}</ul>`:""}${zn}</div>`;
 }
 
 /* ---------- Export ---------- */
@@ -1018,6 +1031,95 @@ $("login-form").addEventListener("submit",async e=>{
   $("login-btn").disabled=false;
   if(error){$("login-msg").textContent="Sign-in failed: "+error.message;return}
   location.reload();
+});
+/* ---------- Admin: ZVIS WIP import ---------- */
+const ZV_DESC={
+ "ELANTRA 1591CC 6A/T SR HIGH":"Hyundai AD High","ELANTRA 1591CC 6A/T SR (BEIG)":"Hyundai AD BEIG","ELANTRA 1591CC 6A/T SR (BUR)":"Hyundai AD BUR","ELANTRA 1591CC 6A/T SR (CAP)":"Hyundai AD CAP",
+ "ELANTRA HYBRID 1580CC 6A/T BLUE (NNB)":"CN7 NNB","ELANTRA HYBRID 1580CC 6A/T BLUE (SSS)":"CN7 SSS",
+ "SONATA 2497CC 6A/T SR DELUXE":"DN8 2.5L","SONATA N LINE 2497CC":"DN8 N Line",
+ "JAECOO J5 HEV COMFORT":"Jaecoo J5 HEV Comfort","JAECOO J5 HEV PREMIUM BLACK":"Jaecoo J5 HEV Black","JAECOO J5 HEV PREMIUM GRAY":"Jaecoo J5 HEV Gray","JAECOO J5 BEV PREMIUM BLACK":"Jaecoo J5 BEV Black",
+ "JAECOO J7 PHEV 1.5 TGDI BEIGE INTERIOR":"Jaecoo J7 PHEV Beige","JAECOO J7 PHEV PREMIUM BLACK INTERIOR F":"Jaecoo J7 PHEV Black","OMODA C7 PHEV PREMIUM":"Omoda C7 PHEV Premium",
+ "PORTER H100 2607CC DIESEL S7 FD":"Porter S7 FD","PORTER H100 2607CC DIESEL S7 HD":"Porter S7 HD","PORTER H100 2607CC DIESEL S7 HD AC":"Porter S7 HD AC","PORTER H100 2607CC DIESEL S7 DL":"Porter Deckless","PORTER H100 2607CC DIESEL S7 DL AC":"Porter DL AC","PORTER H100 2607CC DIESEL S7 FD AC":"Porter FD AC",
+ "PALISADE HEV 2.5T CALLIGRAPHY 3NB (NNB)":"LX3 CAL 3NB","PALISADE HEV 2.5T CALLIGRAPHY ISB":"LX3 CAL ISB","PALISADE HEV 2.5T SMART (NNB)":"LX3 SMT NNB",
+ "TUCSON HEV 1598CC 6A/T AWD SIGNATURE":"NX4 4WD","TUCSON HEV 1598CC 6A/T FWD SMART":"NX4 2WD",
+ "SANTA FE HEV 1598CC-T AWD SIGNATURE (B)":"TM 4WD NNB","SANTA FE HEV 1598CC-T AWD SIGNATURE (C)":"TM 4WD MMX","SANTA FE HEV 1598CC-T FWD SMART (C)":"TM 2WD"};
+const ZV_STAGES=[["BI","start","body"],["BO","fin","body"],["PI","start","paint"],["PO","fin","paint"],["TI","start","tcf"],["TO","fin","tcf"],["QI","start","insp"],["QO","fin","insp"]];
+let zvPlan=null;
+function zvLoadLib(){return new Promise((res,rej)=>{if(window.XLSX)return res();const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=res;s.onerror=()=>rej(new Error("Could not load the Excel reader. Check the internet connection."));document.head.appendChild(s)})}
+function zvDate(v){ // Excel serial or dd.mm.yyyy -> local 08:00 of that day
+  if(v==null||v==="")return null;
+  if(typeof v==="number"&&v>30000){const d=new Date(Date.UTC(1899,11,30)+Math.round(v)*864e5);return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),8,0,0).getTime()}
+  const m=String(v).match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/); return m?new Date(+m[3],+m[2]-1,+m[1],8,0,0).getTime():null;
+}
+function zvParse(rows){
+  const hdr=rows[0].map(h=>String(h==null?"":h).trim().toLowerCase());
+  const col=re=>hdr.findIndex(h=>re.test(h));
+  const C={vin:col(/vin|chassis/),desc:col(/^description$/),mat:col(/^material$/),color:col(/^colou?r$/),batch:col(/^batch$/),ocn:col(/^ocn$/),stt:col(/status text/),rem:col(/remark/)};
+  const sc={}; ZV_STAGES.forEach(([id,kind,line])=>{sc[id]=col(new RegExp(kind==="fin"?"^act\\. fin.*\\("+line:"^actual start\\("+line))});
+  const miss=["vin","desc","color","stt"].filter(k=>C[k]<0).concat(Object.keys(sc).filter(k=>sc[k]<0));
+  if(miss.length)throw new Error("Columns not found: "+miss.join(", ")+". Is this the ZVIS WIP export?");
+  const out=[],bad=[],unmatched={},anomalies=[]; let seq=0;
+  const recs=rows.slice(1).map((r,i)=>({r,i})).filter(x=>x.r&&x.r.some(c=>c!=null&&c!==""));
+  recs.sort((a,b)=>String(a.r[C.batch]||"").localeCompare(String(b.r[C.batch]||""))||a.i-b.i);
+  recs.forEach(({r,i})=>{
+    const vin=String(r[C.vin]||"").trim().toUpperCase();
+    if(!VIN_RE.test(vin)){bad.push({row:i+2,why:vin?"VIN is not 17 valid characters: "+vin:"No VIN"});return}
+    const desc=String(r[C.desc]||"").trim(), variant=ZV_DESC[desc.toUpperCase()];
+    if(!variant){const k=desc||"(blank)";unmatched[k]=(unmatched[k]||0)+1;return}
+    seq++; const scans={};
+    ZV_STAGES.forEach(([id],k)=>{const d=zvDate(r[sc[id]]); if(d!=null){const t=d+k*600000+seq*1000; scans[id]={t,by:"ZVIS import",shift:"",day:prodDay(t),imported:true}}});
+    [["BI","BO"],["PI","PO"],["TI","TO"],["QI","QO"]].forEach(([a,b])=>{if(scans[a]&&scans[b]&&new Date(scans[b].t).toDateString()!==new Date(scans[a].t).toDateString()&&scans[b].t<scans[a].t)anomalies.push(vin+": "+ST[b].name+" date is before "+ST[a].name)});
+    const rem=String(r[C.rem]||"").trim();
+    out.push({vin,variant,color:String(r[C.color]||"").trim().toUpperCase(),scans,zvis:{material:String(r[C.mat]||""),batch:String(r[C.batch]||""),ocn:String(r[C.ocn]||""),status:String(r[C.stt]||""),description:desc,remark:rem}});
+  });
+  return {out,bad,unmatched,anomalies};
+}
+function zvPlanFor(parsed){
+  const plan={add:[],upd:[],same:0,byStatus:{},byModel:{}};
+  parsed.out.forEach(x=>{
+    const sk=x.zvis.status||"(none)"; plan.byStatus[sk]=(plan.byStatus[sk]||0)+1; plan.byModel[x.variant]=(plan.byModel[x.variant]||0)+1;
+    const u=units[x.vin];
+    if(!u){plan.add.push(x);return}
+    const add={}; Object.entries(x.scans).forEach(([k,e])=>{if(!(u.scans&&u.scans[k]))add[k]=e});
+    const colorNew=!!x.color&&!u.color; const zvChanged=JSON.stringify(u.zvis||{})!==JSON.stringify(x.zvis);
+    if(Object.keys(add).length||colorNew||zvChanged)plan.upd.push({...x,addScans:add,colorNew});else plan.same++;
+  });
+  return plan;
+}
+function zvRender(parsed,plan){
+  const rowsM=Object.entries(plan.byModel).sort((a,b)=>b[1]-a[1]).map(([m,n])=>`<tr><td>${esc(m)}</td><td class="num">${n}</td></tr>`).join("");
+  const rowsS=Object.entries(plan.byStatus).sort().map(([m,n])=>`<tr><td>${esc(m)}</td><td class="num">${n}</td></tr>`).join("");
+  const un=Object.entries(parsed.unmatched), skipped=parsed.bad.length+un.reduce((a,b)=>a+b[1],0), n=plan.add.length+plan.upd.length;
+  $("z-preview").innerHTML=`<div class="panel stack"><h2>Preview</h2>
+    <div class="row" style="gap:28px;flex-wrap:wrap"><div><div class="label">New units</div><div class="big">${plan.add.length}</div></div><div><div class="label">Existing, to update</div><div class="big">${plan.upd.length}</div></div><div><div class="label">Already up to date</div><div class="big">${plan.same}</div></div><div><div class="label">Skipped</div><div class="big">${skipped}</div></div></div>
+    <div class="dash-grid"><div><h3>By ZVIS status</h3><div class="tbl-wrap"><table><tbody>${rowsS}</tbody></table></div></div><div><h3>By model</h3><div class="tbl-wrap"><table><tbody>${rowsM}</tbody></table></div></div></div>
+    ${un.length?`<div class="banner bad"><b>Description not in the model table (skipped):</b><br>${un.map(([d,c])=>esc(d)+" ("+c+")").join("<br>")}</div>`:""}
+    ${parsed.bad.length?`<div class="banner bad"><b>Rows skipped (VIN problem):</b> ${parsed.bad.slice(0,8).map(b=>"row "+b.row+": "+esc(b.why)).join("; ")}${parsed.bad.length>8?" …":""}</div>`:""}
+    ${parsed.anomalies.length?`<div class="banner warn"><b>${parsed.anomalies.length} date warning(s)</b> (finish date before start date). They are imported as given:<br>${parsed.anomalies.slice(0,6).map(esc).join("<br>")}${parsed.anomalies.length>6?"<br>…":""}</div>`:""}
+    <p class="note">Existing scans are never changed or removed. Only missing stations are added, and imported scans are marked "ZVIS import" with no shift. Hold status and issues are not touched. Remarks are saved as notes on the unit.</p>
+    <div class="row"><button class="primary" id="z-go" type="button"${n?"":" disabled"}>Import ${n} unit(s)</button><span class="note" id="z-msg"></span></div></div>`;
+  $("z-go").onclick=zvRun;
+}
+async function zvRun(){
+  const plan=zvPlan; if(!plan)return; $("z-go").disabled=true; const now=Date.now(); const total=plan.add.length+plan.upd.length; let failed=0;
+  const lastOf=s=>{let l="";for(const st of STATIONS)if(s[st.id])l=st.id;return l};
+  const jobs=[
+    ...plan.add.map(x=>()=>db.collection("units").doc(x.vin).set({vin:x.vin,variant:x.variant,model:x.variant.split(" ")[0],scans:x.scans,hold:false,issues:[],holdLog:[],createdAt:now,updatedAt:now,last:lastOf(x.scans),...(x.color?{color:x.color}:{}),zvis:x.zvis,importedAt:now})),
+    ...plan.upd.map(x=>()=>{const merged={...(units[x.vin].scans||{}),...x.addScans}; const p={updatedAt:now,zvis:x.zvis,last:lastOf(merged)}; if(Object.keys(x.addScans).length)p.scans=x.addScans; if(x.colorNew)p.color=x.color; if(!units[x.vin].variant)p.variant=x.variant; return db.collection("units").doc(x.vin).update(p)})];
+  for(let i=0;i<jobs.length;i+=10){
+    await Promise.all(jobs.slice(i,i+10).map(j=>j().catch(()=>{failed++}))); $("z-msg").textContent="Importing "+Math.min(total,i+10)+" of "+total+"…";
+  }
+  $("z-msg").textContent=failed?("Finished with "+failed+" failure(s). Choose the same file again to retry them."):"Done. "+total+" unit(s) imported.";
+  toast(failed?"Import finished with errors":"Import complete"); zvPlan=null;
+}
+$("z-file").addEventListener("change",async e=>{
+  const f=e.target.files[0]; if(!f)return; $("z-preview").innerHTML='<div class="note">Reading the file…</div>';
+  try{
+    await zvLoadLib(); const wb=XLSX.read(await f.arrayBuffer(),{type:"array"}); const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""});
+    if(!loaded){$("z-preview").innerHTML='<div class="banner bad">The unit list has not finished loading. Wait a moment and choose the file again.</div>';return}
+    const parsed=zvParse(rows); zvPlan=zvPlanFor(parsed); zvRender(parsed,zvPlan);
+  }catch(err){$("z-preview").innerHTML=`<div class="banner bad">${esc(err.message||"Could not read the file")}</div>`}
 });
 /* ---------- Admin: user accounts ---------- */
 let isAdmin=false, myId="";
