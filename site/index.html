@@ -182,6 +182,7 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
   <nav class="tabs" aria-label="Views">
     <a href="#station" id="tab-station" aria-label="Station scan" title="Station scan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8"/></svg></a>
     <a href="#dashboard" id="tab-dashboard" aria-label="Dashboard" title="Dashboard"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></a>
+    <a href="#users" id="tab-users" hidden aria-label="User accounts" title="User accounts"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14.4c2.2.7 3.5 2.6 3.5 5.6"/></svg></a>
   </nav>
   <div class="conn" title="Connection to the scan log"><span class="dot" id="conn-dot"></span><span id="conn-txt">Connecting…</span></div>
   <button id="signout" class="rail-btn" hidden aria-label="Sign out" title="Sign out"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
@@ -245,6 +246,25 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
           <div class="list" id="st-recent" style="margin-top:8px"></div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- USERS VIEW (admin only) -->
+  <section id="view-users" hidden>
+    <div><h1 style="font-size:26px">User accounts</h1><div class="note">Create sign-ins for operators and managers. Only admins can see this page.</div></div>
+    <form class="panel stack" id="u-form" style="margin-top:16px;max-width:720px">
+      <h2>Add a user</h2>
+      <div class="filters">
+        <div><label class="label" for="u-name">Name</label><input id="u-name" autocomplete="off" placeholder="e.g. Ali Raza"></div>
+        <div><label class="label" for="u-email">Email</label><input id="u-email" type="email" autocomplete="off" required placeholder="name@hyundai-nishat.com"></div>
+        <div><label class="label" for="u-pass">Temporary password</label><input id="u-pass" type="text" autocomplete="off" minlength="8" required placeholder="At least 8 characters"></div>
+        <div><label class="label" for="u-role">Role</label><select id="u-role"><option value="operator">Operator</option><option value="admin">Admin</option></select></div>
+      </div>
+      <div class="row"><button class="primary" type="submit">Create user</button><span class="note" id="u-msg"></span></div>
+    </form>
+    <div class="panel" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between"><h2>All users</h2><span class="chip count" id="u-count">0</span></div>
+      <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last sign-in</th><th></th></tr></thead><tbody id="u-body"></tbody></table></div>
     </div>
   </section>
 
@@ -373,11 +393,13 @@ let pending=null; // scan waiting for variant choice / sequence confirmation
 let signedIn=false, authChecked=false;
 function route(){
   $("view-login").hidden=signedIn||!authChecked;
-  if(!signedIn){$("view-station").hidden=true;$("view-dashboard").hidden=true;return}
-  const v=location.hash==="#dashboard"?"dashboard":"station";
-  $("view-station").hidden=v!=="station"; $("view-dashboard").hidden=v!=="dashboard";
-  $("tab-station").toggleAttribute("aria-current",false); $("tab-dashboard").toggleAttribute("aria-current",false);
+  if(!signedIn){$("view-station").hidden=true;$("view-dashboard").hidden=true;$("view-users").hidden=true;return}
+  const v=location.hash==="#dashboard"?"dashboard":(location.hash==="#users"&&isAdmin?"users":"station");
+  $("view-station").hidden=v!=="station"; $("view-dashboard").hidden=v!=="dashboard"; $("view-users").hidden=v!=="users";
+  $("tab-users").hidden=!isAdmin;
+  $("tab-station").toggleAttribute("aria-current",false); $("tab-dashboard").toggleAttribute("aria-current",false); $("tab-users").toggleAttribute("aria-current",false);
   $("tab-"+v).setAttribute("aria-current","page");
+  if(v==="users")loadUsers();
   if(v==="station"){renderStationSetup(); setTimeout(()=>{if(!$("vin-input").closest("[hidden]"))$("vin-input").focus()},50)}
   else renderDashboard();
 }
@@ -867,6 +889,31 @@ $("login-form").addEventListener("submit",async e=>{
   if(error){$("login-msg").textContent="Sign-in failed: "+error.message;return}
   location.reload();
 });
+/* ---------- Admin: user accounts ---------- */
+let isAdmin=false, myId="";
+async function loadUsers(){
+  const {data,error}=await sb.rpc("admin_list_users");
+  if(error){$("u-body").innerHTML=`<tr><td colspan="6" class="empty">Could not load users: ${esc(error.message)}</td></tr>`;return}
+  const {data:{session}}=await sb.auth.getSession(); myId=session&&session.user.id;
+  $("u-count").textContent=data.length;
+  $("u-body").innerHTML=data.map(u=>{const me=u.user_id===myId;
+    return `<tr><td>${esc(u.display_name||"-")}${me?' <span class="note">(you)</span>':""}</td><td>${esc(u.email)}</td><td>${u.role==="admin"?"Admin":"Operator"}</td><td>${u.active?"Active":'<span class="chip hold">Disabled</span>'}</td><td>${u.last_sign_in_at?fmtDT(Date.parse(u.last_sign_in_at)):"Never"}</td>
+    <td style="white-space:nowrap">${me?"":`<button type="button" data-ua="pw" data-id="${u.user_id}" data-em="${esc(u.email)}">Reset password</button> <button type="button" data-ua="role" data-id="${u.user_id}" data-r="${u.role==="admin"?"operator":"admin"}">Make ${u.role==="admin"?"operator":"admin"}</button> <button type="button" data-ua="act" data-id="${u.user_id}" data-a="${u.active?"0":"1"}">${u.active?"Disable":"Enable"}</button>`}</td></tr>`}).join("")||`<tr><td colspan="6" class="empty">No users yet.</td></tr>`;
+}
+$("u-form").addEventListener("submit",async e=>{
+  e.preventDefault(); $("u-msg").textContent="Creating…";
+  const {error}=await sb.rpc("admin_create_user",{p_email:$("u-email").value,p_password:$("u-pass").value,p_name:$("u-name").value,p_role:$("u-role").value});
+  if(error){$("u-msg").textContent="Not created: "+error.message;return}
+  $("u-msg").textContent="Created. Give them the email and temporary password.";
+  $("u-form").reset(); loadUsers();
+});
+$("u-body").addEventListener("click",async e=>{
+  const b=e.target.closest("button[data-ua]"); if(!b)return; const id=b.dataset.id; let r;
+  if(b.dataset.ua==="pw"){const p=prompt("New password for "+b.dataset.em+" (at least 8 characters):"); if(!p)return; r=await sb.rpc("admin_reset_password",{p_user:id,p_password:p}); if(!r.error)toast("Password changed")}
+  else if(b.dataset.ua==="role"){if(!confirm("Change this user's role to "+b.dataset.r+"?"))return; r=await sb.rpc("admin_set_role",{p_user:id,p_role:b.dataset.r})}
+  else {if(b.dataset.a==="0"&&!confirm("Disable this account? They will not be able to sign in."))return; r=await sb.rpc("admin_set_active",{p_user:id,p_active:b.dataset.a==="1"})}
+  if(r.error){toast(r.error.message);return} loadUsers();
+});
 $("signout").addEventListener("click",async()=>{await sb.auth.signOut();location.reload()});
 $("forgot-btn").addEventListener("click",async()=>{
   const email=$("login-email").value.trim();
@@ -896,6 +943,7 @@ if(sb)sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY")setTimeout(show
   const {data:{session}}=await sb.auth.getSession(); authChecked=true;
   if(!session){signedIn=false;setConn("off","Signed out");route();return}
   signedIn=true; $("signout").hidden=false; $("signout").title=session.user.email;
+  try{const {data:pr}=await sb.from("profiles").select("role,active,display_name").eq("user_id",session.user.id).maybeSingle(); isAdmin=!!(pr&&pr.role==="admin"&&pr.active); if(pr&&pr.display_name&&!operator)operator=pr.display_name}catch(e){isAdmin=false}
   if(!operator)operator=session.user.email.split("@")[0];
   route();
   db=supaDB();
