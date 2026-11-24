@@ -96,6 +96,8 @@ body{margin:0}[hidden]{display:none!important}
 .tcfnote{margin:4px 0 0;color:#B9CBE3;font-size:13.5px}
 .tcf-grp{display:grid;grid-template-columns:34px 1fr;gap:10px;margin-top:12px}
 .g-trim{--gc:#00AAD2;--gbg:#06376F;--gtag:#002C5F}.g-chassis{--gc:#FFFFFF;--gbg:#0E4F86;--gtag:#06376F}.g-final{--gc:#E4DCD3;--gbg:#4B4339;--gtag:#2F2A24}
+.tcf-grp+.tcf-grp{margin-top:34px;position:relative}
+.tcf-grp+.tcf-grp::before{content:"";position:absolute;left:0;right:0;top:-17px;height:2px;background:linear-gradient(90deg,var(--gc),transparent 85%);opacity:.55}
 .tcf-lab{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:800;letter-spacing:.12em;color:var(--gc);font-size:13px;background:var(--gtag);border:1px solid var(--gc)}
 .tcf-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px}
 @media(min-width:1100px){.tcf-cards{grid-template-columns:repeat(10,minmax(0,1fr))}}
