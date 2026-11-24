@@ -180,6 +180,17 @@ th.sortable:hover{color:#00AAD2}
 th[data-sort="1"]::after{content:" ▲";font-size:.75em;color:#00AAD2}
 th[data-sort="-1"]::after{content:" ▼";font-size:.75em;color:#00AAD2}
 th.dragover{box-shadow:inset 3px 0 0 #00AAD2}
+body.kiosk{overflow:hidden}
+body.kiosk header.bar{display:none}
+body.kiosk .wrap{max-width:none;padding:0}
+#view-shop.kgen{position:fixed;inset:0;z-index:40;background:var(--bg,#f4f6fa);padding:2.5vh 2.5vw;overflow:hidden}
+#view-shop.kgen .shopnav{display:none}
+#view-shop.kgen #shop-generic{zoom:1.5}
+#view-shop.kgen #shop-generic .panel:last-of-type{display:none}
+#rot-bar{position:fixed;left:0;right:0;top:0;height:5px;z-index:99;background:rgba(0,170,210,.2)}
+#rot-bar i{display:block;height:100%;background:#00AAD2;width:0;animation:rotbar var(--sec,15s) linear forwards}
+#rot-bar span{position:fixed;right:12px;bottom:10px;background:rgba(0,44,95,.88);color:#fff;font-size:12px;padding:4px 10px}
+@keyframes rotbar{to{width:100%}}
 .tcf-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
 .tcf-st{background:#06376F;border:1px solid #00AAD2;padding:10px 14px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .tcf-st h4{margin:0;font-size:13px;letter-spacing:.08em;color:#B9CBE3;min-width:92px}
@@ -550,6 +561,8 @@ let signedIn=false, authChecked=false;
 function route(){
   $("view-login").hidden=signedIn||!authChecked;
   if(!signedIn){$("view-station").hidden=true;$("view-dashboard").hidden=true;$("view-users").hidden=true;$("view-import").hidden=true;$("view-plant").hidden=true;$("view-shop").hidden=true;return}
+  if(location.hash.indexOf("#rotate")===0){rotStart();return}
+  rotStop();
   const v=location.hash==="#dashboard"?"dashboard":location.hash==="#plant"?"plant":/^#shop-/.test(location.hash)?"shop":(location.hash==="#users"&&isAdmin?"users":(location.hash==="#import"&&isAdmin?"import":"station"));
   $("view-station").hidden=v!=="station"; $("view-dashboard").hidden=v!=="dashboard"; $("view-users").hidden=v!=="users"; $("view-import").hidden=v!=="import"; $("view-plant").hidden=v!=="plant"; $("view-shop").hidden=v!=="shop";
   $("tab-users").hidden=!isAdmin; $("tab-import").hidden=!isAdmin;
@@ -995,7 +1008,7 @@ No vehicle"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">
 }
 /* ---------- Shop dashboards (opened from the Body / Paint / TCF / QC tiles) ---------- */
 const SHOPS={body:["Body","BI","BO","Paint"],paint:["Paint","PI","PO","TCF"],tcf:["TCF","TI","TO","QC"],qc:["QC","QI","QO","line-off"]};
-function shopKey(){const m=location.hash.match(/^#shop-(\w+)/);return m&&SHOPS[m[1]]?m[1]:"body"}
+function shopKey(){if(rot.on&&SHOPS[rot.cur])return rot.cur; const m=location.hash.match(/^#shop-(\w+)/);return m&&SHOPS[m[1]]?m[1]:"body"}
 function renderShop(){
   if($("view-shop").hidden)return;
   const key=shopKey(), [name,si,so,next]=SHOPS[key];
@@ -1175,6 +1188,52 @@ function renderPlant(){
 }
 $("pl-fs").addEventListener("click",()=>{const el=$("plantv");if(document.fullscreenElement){document.exitFullscreen()}else if(el.requestFullscreen){el.requestFullscreen().catch(()=>toast("Full screen is not available here"))}else toast("Full screen is not supported on this browser")});
 document.addEventListener("fullscreenchange",()=>{$("pl-fs").textContent=document.fullscreenElement&&document.fullscreenElement.id==="plantv"?"Exit full screen":"Full screen"});
+/* ---------- Rotating display (TV mode): open the site with #rotate ----------
+   #rotate                                   all five screens, 15 s each
+   #rotate?sec=30                            30 s each
+   #rotate?views=plant,tcf&sec=20            only these screens, in this order (plant, body, paint, tcf, qc) */
+const rot={on:false,i:0,sec:15,views:[],cur:"",timer:null,sig:""};
+const ROT_NAMES={plant:"Plant overview, all locations",body:"Body shop",paint:"Paint shop",tcf:"TCF",qc:"Quality (QC)"};
+function rotConf(){
+  const p=new URLSearchParams(location.hash.split("?")[1]||"");
+  const sec=Math.min(600,Math.max(5,parseInt(p.get("sec")||p.get("s"),10)||15));
+  let v=(p.get("views")||"plant,body,paint,tcf,qc").toLowerCase().split(",").map(x=>x.trim()).filter(x=>x==="plant"||SHOPS[x]);
+  if(!v.length)v=["plant","body","paint","tcf","qc"];
+  return {sec,v};
+}
+function rotKfsCss(){ // same one-screen layout as the Full screen button, applied by class
+  if($("kfs-css"))return;
+  const txt=[...document.querySelectorAll("style")].map(s=>s.textContent).join("\n");
+  const st=document.createElement("style"); st.id="kfs-css";
+  st.textContent=txt.split("\n").filter(l=>l.includes(":fullscreen")).join("\n").replaceAll(":fullscreen",".kfs")+"\n.kfs{position:fixed!important;inset:0;z-index:50;width:100vw;box-sizing:border-box}";
+  document.head.appendChild(st);
+}
+function rotLabel(v){
+  let b=$("rot-bar"); if(!b){b=document.createElement("div");b.id="rot-bar";b.innerHTML="<i></i><span></span>";document.body.appendChild(b)}
+  const i=b.querySelector("i"); i.style.setProperty("--sec",rot.sec+"s"); i.style.animation="none"; void i.offsetWidth; i.style.animation="";
+  b.querySelector("span").textContent=ROT_NAMES[v]+" · "+((rot.i%rot.views.length)+1)+" of "+rot.views.length;
+}
+function rotShow(){
+  const v=rot.views[rot.i%rot.views.length]; rot.cur=v;
+  ["view-station","view-dashboard","view-users","view-import","view-plant","view-shop"].forEach(id=>$(id).hidden=true);
+  document.querySelectorAll(".kfs").forEach(e=>e.classList.remove("kfs"));
+  $("view-shop").classList.toggle("kgen",v!=="plant"&&v!=="tcf");
+  if(v==="plant"){$("view-plant").hidden=false;$("plantv").classList.add("kfs");renderPlant()}
+  else{$("view-shop").hidden=false;renderShop();if(v==="tcf")document.querySelector(".tcfv").classList.add("kfs")}
+  rotLabel(v);
+}
+function rotStop(){
+  if(rot.timer){clearInterval(rot.timer);rot.timer=null}
+  if(!rot.on)return; rot.on=false; rot.sig="";
+  document.body.classList.remove("kiosk"); document.querySelectorAll(".kfs").forEach(e=>e.classList.remove("kfs")); $("view-shop").classList.remove("kgen");
+  const b=$("rot-bar"); if(b)b.remove();
+}
+function rotStart(){
+  const c=rotConf(), sig=c.sec+"|"+c.v.join(","); if(rot.on&&rot.sig===sig)return;
+  rotStop(); rot.on=true; rot.sig=sig; rot.sec=c.sec; rot.views=c.v; rot.i=0;
+  document.body.classList.add("kiosk"); rotKfsCss(); rotShow();
+  rot.timer=setInterval(()=>{rot.i++;rotShow()},rot.sec*1000);
+}
 /* ---------- Admin: ZVIS WIP import ---------- */
 const ZV_DESC={
  "ELANTRA 1591CC 6A/T SR HIGH":"Hyundai AD High","ELANTRA 1591CC 6A/T SR (BEIG)":"Hyundai AD BEIG","ELANTRA 1591CC 6A/T SR (BUR)":"Hyundai AD BUR","ELANTRA 1591CC 6A/T SR (CAP)":"Hyundai AD CAP",
