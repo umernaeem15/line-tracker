@@ -940,18 +940,22 @@ function tcfReplay(){
   });
   return {sl,where,from};
 }
+function tcfInsideSet(){ // units counted as inside TCF: on the 37-station conveyor, or held (offline). Older units pushed off the end count as lined off.
+  const rp=tcfReplay(); return new Set(Object.values(units).filter(u=>u.scans&&u.scans.TI&&!u.scans.TO&&((u.vin in rp.where)||u.hold)).map(u=>u.vin));
+}
 function renderDashboard(){
   if($("view-dashboard").hidden)return;
   const today=prodDay(Date.now()); const sf=$("f-shift").value;
   $("dash-date").textContent="Production day "+new Date(today+"T12:00").toLocaleDateString([], {weekday:"long",day:"numeric",month:"long"})+" · Shift A 08:00–16:30, Shift B 16:30–01:00";
   const all=Object.values(units);
+  const tcfIn=tcfInsideSet();
   const inToday=(u,s)=>{const e=u.scans&&u.scans[s];return e&&e.day===today&&(!sf||e.shift===sf)};
   // Flow cards
   $("flow").innerHTML=LINES.map((ln,li)=>{
     const si=STATIONS[li*2].id, so=STATIONS[li*2+1].id;
     const nIn=all.filter(u=>inToday(u,si)).length, nOut=all.filter(u=>inToday(u,so)).length;
-    const wip=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]).length;
-    const held=all.filter(u=>u.hold&&u.scans&&u.scans[si]&&!u.scans[so]).length;
+    const insd=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]&&(li!==2||tcfIn.has(u.vin))); const wip=insd.length;
+    const held=insd.filter(u=>u.hold).length;
     return `<div class="line-card"><h3>${ln} ${held?`<span class="chip hold">${held} hold</span>`:""}</h3>
       <div class="io-row"><div><div class="label">In</div><div class="n">${nIn}</div></div><div><div class="label">Out</div><div class="n">${nOut}</div></div><div class="wip"><div class="label">Inside</div><div class="n">${wip}</div></div></div></div>`}).join("");
   // TCF station line view: units on the conveyor, newest In = T-1, oldest = F-9. Held units are offline.
@@ -970,7 +974,7 @@ function renderDashboard(){
       if(!u)return `<div class="tcf-c empty" data-tip="Station: ${nm}
 No vehicle"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">Empty</div></div>`;
       return `<div class="tcf-c${u.hold?" hold":""}" style="${tileStyle(u.color)}" data-tip="${tip(u,nm)}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(colorName(u.color))}">${u.color?esc(u.color):"-"}</div></div>`}).join("")}</div></div>`).join("")
-      +(beyond.length?`<div class="tcfnote" style="margin-top:10px">${beyond.length} unit(s) scanned into TCF are beyond the 37 stations, check for missing TCF Out scans.</div>`:"");
+      +(beyond.length?`<div class="tcfnote" style="margin-top:10px">${beyond.length} earlier unit(s) have gone past F-9 and are counted as lined off. They have no TCF Out scan yet.</div>`:"");
     $("tcf-line").innerHTML+=`<div class="tcf-off"><div class="tcf-offh">OFFLINE <span>(held, taken off the conveyor)</span><b>${off.length}</b></div>`+(off.length?`<div class="tcf-cards">${off.map(u=>`<div class="tcf-c hold" style="${tileStyle(u.color)}" data-tip="${tip(u,"Offline, left from "+(u.holdTcf||rp.from[u.vin]||"TCF"))}"><span class="nm">Off from ${esc(u.holdTcf||rp.from[u.vin]||"TCF")}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(colorName(u.color))}">${u.color?esc(u.color):"-"}</div><div class="tm">${esc(u.holdReason||"")}</div><div class="tm">Offline ${fmtDur(Date.now()-(u.holdAt||Date.now()))}</div></div>`).join("")}</div>`:`<div class="tcfnote">No units offline.</div>`)+`</div>`;
     const cnt=(s)=>{const o={t:0,A:0,B:0};all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){o.t++;o[e.shift]=(o[e.shift]||0)+1}});return o};
     const blk=(t,o)=>`<div class="tcf-st"><h4>${t}</h4><div><div class="l">Today</div><div class="n">${o.t}</div></div><div class="sh"><div class="l">Shift A</div><div class="n">${o.A}</div></div><div class="sh"><div class="l">Shift B</div><div class="n">${o.B}</div></div></div>`;
@@ -1084,16 +1088,17 @@ const PL_LOCS=[["Body","BI","BO","#00AAD2","Paint In"],["Paint","PI","PO","#E4DC
 function renderPlant(){
   if($("view-plant").hidden)return;
   const today=prodDay(Date.now()), all=Object.values(units);
+  const tcfIn=tcfInsideSet();
   const cnt=s=>{const o={t:0,A:0,B:0};all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){o.t++;o[e.shift]=(o[e.shift]||0)+1}});return o};
   const kpi=(t,o)=>`<div class="pl-kpi"><h4>${t}</h4><div><div class="l">Today</div><div class="n">${o.t}</div></div><div class="sh"><div class="l">Shift A</div><div class="n">${o.A}</div></div><div class="sh"><div class="l">Shift B</div><div class="n">${o.B}</div></div></div>`;
   const wip=all.filter(u=>u.scans&&u.scans.BI&&!u.scans.QO).length;
   $("pl-top").innerHTML=`<div class="pl-kpi"><h4>TOTAL WIP IN PLANT</h4><div><div class="l">Body In to QC Out</div><div class="n">${wip}</div></div></div>`+kpi("LINE IN (Body In)",cnt("BI"))+kpi("LINE OFF (QC Out)",cnt("QO"));
   $("pl-cols").innerHTML=PL_LOCS.map(([name,si,so,ac,next],i)=>{
-    const inside=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]);
+    const inside=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]&&(i!==2||tcfIn.has(u.vin)));
     const held=inside.filter(u=>u.hold).length;
     const mm={}; inside.forEach(u=>{const k=u.variant||"Unknown";mm[k]=(mm[k]||0)+1});
     const rows=Object.entries(mm).sort((a,b)=>b[1]-a[1]); const mx=Math.max(1,...rows.map(r=>r[1]));
-    const wait=i<3?all.filter(u=>u.scans&&u.scans[so]&&!(u.scans[PL_LOCS[i+1][1]])).length:null;
+    const wait=i<3?all.filter(u=>u.scans&&(u.scans[so]||(i===2&&u.scans.TI&&!tcfIn.has(u.vin)))&&!(u.scans[PL_LOCS[i+1][1]])).length:null;
     const ci=cnt(si), co=cnt(so);
     const oldest=inside.length?Math.min(...inside.map(u=>u.scans[si].t)):null;
     return `<div class="pl-card" style="--ac:${ac}"><h3>${name}</h3>
