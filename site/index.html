@@ -334,6 +334,21 @@ const ST=Object.fromEntries(STATIONS.map((s,i)=>[s.id,{...s,i,name:s.line+" "+s.
 const LINES=["Body","Paint","TCF","QC"];
 const COLOR_MAP={WYW:["Polar White","#F4F4F2"],NKA:["Black Diamond Metallic","#2A2C30"],GGM:["Graphite Grey Metallic","#5A5E63"],TB5:["Teal Blue","#2F7F8C"],SMH:["Silver Metallic","#B5B9BE"],M2F:["Magnetic Force","#6B6F76"],XB2:["Oxford Blue","#2B4A8B"],NBA:["Phantom Black","#15161A"],NT2:["Hampton Gray","#8A8D91"],"2RP":["Ultimate Red Metallic","#B3202A"],NKW:["Khaki White","#E8E4D6"],CCB:["Carbon Crystal Black","#1E2022"],NPG:["Phantom Gray","#4A4D52"],NUG:["Eucalyptus Green","#4F7A5F"],EGM:["Elegant Gray","#7E8185"],NDB:["Dark Blue","#1F3560"],MOG:["Olive Grey","#6C6F56"],MMS:["Moonlight Silver","#C9CDD2"],RBG:["Royal British Green","#1F4D36"],NMG:["Misty Green","#8FB39A"],YAW:["Creamy White","#F1E6CF"],R8N:["Robust Emerald Green","#1F6B4F"],R2F:["Rain Forest","#3E5A3B"]};
 const BODY_COLORS=Object.keys(COLOR_MAP);
+/* Exterior colours available per model (from the plant reference). Variants not listed here show every colour. */
+const VARIANT_COLORS=(()=>{
+  const ELH=["GGM","NKA","SMH","TB5","WYW"], HYB=["M2F","NBA","NT2","SMH","WYW","XB2"], J7=["CCB","MMS","MOG","NKW","NPG","RBG"];
+  const SF=["M2F","NKA","R2F","SMH","WYW","XB2"], T_AWD=["M2F","NBA","NT2","SMH","WYW","XB2"], T_FWD=["M2F","NBA","NT2","SMH","WYW"];
+  const J5G=["CCB","EGM","NDB","NKW","NPG","NUG"];
+  return {"Hyundai AD High":ELH,"Hyundai AD BEIG":ELH,"Hyundai AD BUR":ELH,"Hyundai AD CAP":ELH,
+    "CN7 NNB":HYB,"CN7 SSS":["M2F","NBA","SMH","WYW","XB2"],
+    "DN8 2.5L":["NKA","NT2","WYW","XB2"],"DN8 N Line":["2RP","NBA","WYW"],
+    "Jaecoo J5 BEV Black":["CCB","NKW","NPG"],"Jaecoo J5 HEV Comfort":["CCB","EGM","NDB","NKW","NUG"],"Jaecoo J5 HEV Black":["CCB","NKW"],"Jaecoo J5 HEV Gray":J5G,"Jaecoo J5 HEV Premium":J5G,
+    "Jaecoo J7 PHEV Beige":J7,"Jaecoo J7 PHEV Black":J7,"Jaecoo J7 PHEV Premium":J7,
+    "Omoda C7 PHEV Premium":["CCB","MMS","NKW","NMG","NPG"],
+    "LX3 CAL 3NB":["NBA","NT2","SMH","WYW"],"LX3 CAL ISB":["NBA","NT2","R8N","SMH","WYW"],"LX3 SMT NNB":["NBA","NT2","WYW"],
+    "NX4 4WD":T_AWD,"NX4 2WD":T_FWD,"TM 4WD MMX":SF,"TM 4WD NNB":SF,
+    "Porter S7 FD":["YAW"],"Porter S7 HD":["YAW"],"Porter S7 HD AC":["YAW"],"Porter Deckless":["YAW"],"Porter DL AC":["YAW"],"Porter FD AC":["YAW"]};
+})();
 function colorName(c){return c?(COLOR_MAP[c]?COLOR_MAP[c][0]:c):"No color"}
 function tileStyle(c){ // tile fill follows the body colour; text flips light/dark for contrast
   const m=COLOR_MAP[c]; if(!m)return "";
@@ -613,9 +628,10 @@ function renderPending(){
       <div class="row" style="margin-top:10px"><button class="primary" type="button" data-act="force">Log anyway</button><button type="button" data-act="cancel">Cancel</button></div>`);
     setTimeout(()=>$("seq-reason")&&$("seq-reason").focus(),30);
     return}
+  if(station==="PO"&&!p.color&&!p.colorSkip&&(VARIANT_COLORS[p.variant]||[]).length===1)p.color=VARIANT_COLORS[p.variant][0];
   if(station==="PO"&&!p.color&&!p.colorSkip&&!(units[p.vin]&&units[p.vin].color)){
     showResult("warn","Body color",`<div class="big">${p.vin}</div><div>${esc(p.variant)}</div><p style="margin:6px 0 10px">Choose the body color of this vehicle:</p>
-      <div class="choices">${BODY_COLORS.map(c=>`<button type="button" data-color="${c}" title="${esc(colorName(c))}"><b>${c}</b><br><span style="font-size:11px;font-weight:500">${esc(colorName(c))}</span></button>`).join("")}</div>
+      <div class="choices">${(VARIANT_COLORS[p.variant]||BODY_COLORS).map(c=>`<button type="button" data-color="${c}" title="${esc(colorName(c))}"><b>${c}</b><br><span style="font-size:11px;font-weight:500">${esc(colorName(c))}</span></button>`).join("")}</div>
       <div class="row" style="margin-top:10px"><input id="color-other" placeholder="Other code" maxlength="8" style="width:130px;text-transform:uppercase"><button type="button" data-act="color-other">Use</button><button type="button" data-act="color-skip">Skip</button><button type="button" data-act="cancel">Cancel</button></div>`);
     return}
   commitScan();
