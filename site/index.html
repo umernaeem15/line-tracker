@@ -94,13 +94,14 @@ body{margin:0}[hidden]{display:none!important}
 .tcfv{background:#0f1624;border:1px solid #1f2a44;padding:18px;color:#e6edf8}
 .tcfnote{margin:4px 0 0;color:#9aa8c2;font-size:13.5px}
 .tcf-grp{display:grid;grid-template-columns:34px 1fr;gap:10px;margin-top:12px}
-.tcf-lab{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-weight:800;letter-spacing:.12em;color:#7fb0ff;font-size:13px;background:#131d33;border:1px solid #1f2a44}
+.g-trim{--gc:#4c8dff;--gbg:#101a2e;--gtag:#16233f}.g-chassis{--gc:#2fbf9b;--gbg:#0f211f;--gtag:#13302b}.g-final{--gc:#f0a23b;--gbg:#251c0e;--gtag:#3a2a10}
+.tcf-lab{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-weight:800;letter-spacing:.12em;color:var(--gc);font-size:13px;background:var(--gtag);border:1px solid var(--gc)}
 .tcf-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px}
 @media(min-width:1100px){.tcf-cards{grid-template-columns:repeat(10,minmax(0,1fr))}}
-.tcf-c{background:#101a2e;border:1px solid #2a4a9a;padding:8px;min-width:0;position:relative}
+.tcf-c{background:var(--gbg);border:1px solid var(--gc);padding:8px;min-width:0;position:relative}
 .tcf-c.hold{border-color:#d33;background:#2a1418}
 .tcf-c.empty{opacity:.35;border-style:dashed}
-.tcf-c .nm{font-weight:800;font-size:12px;color:#7fb0ff;background:#16233f;display:inline-block;padding:2px 6px;letter-spacing:.03em}
+.tcf-c .nm{font-weight:800;font-size:12px;color:var(--gc);background:var(--gtag);display:inline-block;padding:2px 6px;letter-spacing:.03em}
 .tcf-c .vn{font-family:var(--f-mono);font-weight:700;font-size:17px;margin-top:8px;color:#fff}
 .tcf-c .vr{font-size:13.5px;color:#d6dff0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tcf-c .tm{font-size:12px;color:#9aa8c2;margin-top:2px}
@@ -746,7 +747,7 @@ function renderDashboard(){
       ["CHASSIS",Array.from({length:8},(_,i)=>"CHASSIS "+String(i+1).padStart(2,"0"))],
       ["FINAL",Array.from({length:9},(_,i)=>"FINAL "+String(i+1).padStart(2,"0"))]];
     let n=0;
-    $("tcf-line").innerHTML=grp.map(([g,names])=>`<div class="tcf-grp"><div class="tcf-lab">${g}</div><div class="tcf-cards">${names.map(nm=>{
+    $("tcf-line").innerHTML=grp.map(([g,names])=>`<div class="tcf-grp g-${g.toLowerCase()}"><div class="tcf-lab">${g}</div><div class="tcf-cards">${names.map(nm=>{
       const u=inside[n++];
       if(!u)return `<div class="tcf-c empty"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">Empty</div></div>`;
       return `<div class="tcf-c${u.hold?" hold":""}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="tm">${fmtT(u.scans.TI.t)} · ${fmtDur(Date.now()-u.scans.TI.t)}</div></div>`}).join("")}</div></div>`).join("")
