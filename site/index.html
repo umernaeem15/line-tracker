@@ -707,6 +707,7 @@ async function commitScan(){
   const p=pending; pending=null; const now=Date.now();
   const entry={t:now,by:operator||"",shift:shiftOf(now),day:prodDay(now)}; if(p.remark)entry.remark=p.remark;
   if(p.color)entry.color=p.color;
+  if(station==="TI"){try{const rp=tcfReplay(); if(rp.sl.indexOf(null)<0){const victim=rp.sl[36]; if(victim&&victim!==p.vin&&!(units[victim]&&units[victim].hold))await db.collection("units").doc(victim).update({scans:{TO:{t:now,by:"auto",shift:shiftOf(now),day:prodDay(now),remark:"Auto line-off: pushed out by TCF In of "+p.vin}},updatedAt:now})}}catch(e){}}
   const ref=db.collection("units").doc(p.vin);
   try{
     if(!p.exists){
@@ -818,8 +819,8 @@ function openHold(vin){
     <div><label class="label" for="h-reason">Hold reason</label><textarea id="h-reason" required placeholder="e.g. Paint run on LH rear door, waiting for rework"></textarea></div>`,
   async()=>{const r=$("h-reason").value.trim(); if(!r){toast("Enter a hold reason");return false}
     const now=Date.now(); const log=(u.holdLog||[]).concat([{a:"hold",t:now,by:operator,st:station||"",r}]);
-    const ins=Object.values(units).filter(x=>x.scans&&x.scans.TI).sort((a,b)=>b.scans.TI.t-a.scans.TI.t); const ix=ins.findIndex(x=>x.vin===vin); const SN=[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5)),...Array.from({length:8},(_,i)=>"C-"+(i+1)),...Array.from({length:9},(_,i)=>"F-"+(i+1))];
-    await db.collection("units").doc(vin).update({hold:true,...(ix>=0&&SN[ix]?{holdTcf:SN[ix]}:{}),holdReason:r,holdAt:now,holdBy:operator,holdStation:station||"",holdLog:log,updatedAt:now}); toast("On hold: "+vin)});
+    const ix=tcfReplay().where[vin]; const SN=[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5)),...Array.from({length:8},(_,i)=>"C-"+(i+1)),...Array.from({length:9},(_,i)=>"F-"+(i+1))];
+    await db.collection("units").doc(vin).update({hold:true,...(ix!==undefined?{holdTcf:TCF_SN[ix]}:{}),holdReason:r,holdAt:now,holdBy:operator,holdStation:station||"",holdLog:log,updatedAt:now}); toast("On hold: "+vin)});
 }
 function openRevert(vin){
   const u=units[vin], last=u&&lastStation(u); if(!last){toast("No scans to revert");return}
@@ -852,6 +853,34 @@ function openIssue(vin){
 }
 
 /* ---------- Dashboard ---------- */
+/* TCF conveyor replay: 37 stations, T-1 first. A new TCF In steps units forward until the first empty station absorbs the move.
+   If there is no empty station, the unit at F-9 is pushed off the line (automatic TCF Out). Holds leave a gap; a released unit returns to the nearest free station. */
+const TCF_SN=[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5)),...Array.from({length:8},(_,i)=>"C-"+(i+1)),...Array.from({length:9},(_,i)=>"F-"+(i+1))];
+function tcfReplay(){
+  const ev=[];
+  Object.values(units).forEach(u=>{const s=u.scans||{}; if(!s.TI)return;
+    ev.push({t:s.TI.t,k:0,u}); if(s.TO)ev.push({t:s.TO.t,k:3,u});
+    const lg=u.holdLog||[]; lg.forEach(h=>ev.push({t:h.t,k:h.a==="hold"?1:2,u}));
+    if(u.hold&&u.holdAt&&!(lg.length&&lg[lg.length-1].a==="hold"))ev.push({t:u.holdAt,k:1,u});
+  });
+  ev.sort((a,b)=>a.t-b.t||a.k-b.k);
+  const sl=Array(37).fill(null), where={}, held={}, from={};
+  ev.forEach(e=>{const v=e.u.vin;
+    if(e.k===0){
+      let g=sl.indexOf(null);
+      if(g<0){delete where[sl[36]]; sl[36]=null; g=36}
+      for(let i=g;i>0;i--){sl[i]=sl[i-1]; if(sl[i])where[sl[i]]=i}
+      sl[0]=v; where[v]=0;
+    }else if(e.k===1){
+      if(v in where){const i=where[v]; from[v]=TCF_SN[i]; held[v]=i; sl[i]=null; delete where[v]}
+    }else if(e.k===2){
+      if(v in held){const i0=held[v]; delete held[v]; let b=-1;
+        for(let d=0;d<37&&b<0;d++){if(i0-d>=0&&!sl[i0-d])b=i0-d; else if(i0+d<37&&!sl[i0+d])b=i0+d}
+        if(b>=0){sl[b]=v; where[v]=b}}
+    }else if(v in where){sl[where[v]]=null; delete where[v]}
+  });
+  return {sl,where,from};
+}
 function renderDashboard(){
   if($("view-dashboard").hidden)return;
   const today=prodDay(Date.now()); const sf=$("f-shift").value;
@@ -869,10 +898,8 @@ function renderDashboard(){
   // TCF station line view: units on the conveyor, newest In = T-1, oldest = F-9. Held units are offline.
   (function(){
     const full=all.filter(u=>u.scans&&u.scans.TI&&!u.scans.TO).sort((a,b)=>b.scans.TI.t-a.scans.TI.t);
-    const inside=full.filter(u=>!u.hold), off=full.filter(u=>u.hold);
-    // Conveyor position: each unit scanned In after this one pushed it one step on, so slot = number of later TCF In scans (held units leave a gap)
-    const allTI=all.filter(u=>u.scans&&u.scans.TI).sort((a,b)=>b.scans.TI.t-a.scans.TI.t); const rk=new Map(allTI.map((u,i)=>[u.vin,i]));
-    const slot=Array(37).fill(null); inside.forEach(u=>{const r=rk.get(u.vin); if(r<37)slot[r]=u}); const beyond=inside.filter(u=>rk.get(u.vin)>=37);
+    const off=full.filter(u=>u.hold); const rp=tcfReplay();
+    const slot=rp.sl.map(v=>v&&!units[v].hold?units[v]:null); const inside=slot.filter(Boolean); const beyond=full.filter(u=>!u.hold&&!(u.vin in rp.where));
     const tip=(u,pos)=>esc(["Station: "+pos,"VIN: "+u.vin,"Model: "+(u.variant||"-"),"Body color: "+(u.color?u.color+" ("+colorName(u.color)+")":"not recorded"),"TCF In: "+fmtDT(u.scans.TI.t)+" ("+fmtDur(Date.now()-u.scans.TI.t)+" in TCF)",u.scans.PO?"Paint Out: "+fmtDT(u.scans.PO.t):"",u.hold?"ON HOLD: "+(u.holdReason||"")+(u.holdBy?" ("+u.holdBy+")":"")+(u.holdAt?", since "+fmtDT(u.holdAt):""):""].filter(Boolean).join("\n"));
     const SN=[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5)),...Array.from({length:8},(_,i)=>"C-"+(i+1)),...Array.from({length:9},(_,i)=>"F-"+(i+1))];
     const grp=[["TRIM",[...Array.from({length:4},(_,i)=>"T-"+(i+1)),"PANO",...Array.from({length:15},(_,i)=>"T-"+(i+5))]],
@@ -885,7 +912,7 @@ function renderDashboard(){
 No vehicle"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">Empty</div></div>`;
       return `<div class="tcf-c${u.hold?" hold":""}" style="${tileStyle(u.color)}" data-tip="${tip(u,nm)}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(colorName(u.color))}">${u.color?esc(u.color):"-"}</div></div>`}).join("")}</div></div>`).join("")
       +(beyond.length?`<div class="tcfnote" style="margin-top:10px">${beyond.length} unit(s) scanned into TCF are beyond the 37 stations, check for missing TCF Out scans.</div>`:"");
-    $("tcf-line").innerHTML+=`<div class="tcf-off"><div class="tcf-offh">OFFLINE <span>(held, taken off the conveyor)</span><b>${off.length}</b></div>`+(off.length?`<div class="tcf-cards">${off.map(u=>`<div class="tcf-c hold" style="${tileStyle(u.color)}" data-tip="${tip(u,"Offline, left from "+(u.holdTcf||SN[rk.get(u.vin)]||"TCF"))}"><span class="nm">Off from ${esc(u.holdTcf||SN[rk.get(u.vin)]||"TCF")}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(colorName(u.color))}">${u.color?esc(u.color):"-"}</div><div class="tm">${esc(u.holdReason||"")}</div><div class="tm">Offline ${fmtDur(Date.now()-(u.holdAt||Date.now()))}</div></div>`).join("")}</div>`:`<div class="tcfnote">No units offline.</div>`)+`</div>`;
+    $("tcf-line").innerHTML+=`<div class="tcf-off"><div class="tcf-offh">OFFLINE <span>(held, taken off the conveyor)</span><b>${off.length}</b></div>`+(off.length?`<div class="tcf-cards">${off.map(u=>`<div class="tcf-c hold" style="${tileStyle(u.color)}" data-tip="${tip(u,"Offline, left from "+(u.holdTcf||rp.from[u.vin]||"TCF"))}"><span class="nm">Off from ${esc(u.holdTcf||rp.from[u.vin]||"TCF")}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(colorName(u.color))}">${u.color?esc(u.color):"-"}</div><div class="tm">${esc(u.holdReason||"")}</div><div class="tm">Offline ${fmtDur(Date.now()-(u.holdAt||Date.now()))}</div></div>`).join("")}</div>`:`<div class="tcfnote">No units offline.</div>`)+`</div>`;
     const cnt=(s)=>{const o={t:0,A:0,B:0};all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){o.t++;o[e.shift]=(o[e.shift]||0)+1}});return o};
     const blk=(t,o)=>`<div class="tcf-st"><h4>${t}</h4><div><div class="l">Today</div><div class="n">${o.t}</div></div><div class="sh"><div class="l">Shift A</div><div class="n">${o.A}</div></div><div class="sh"><div class="l">Shift B</div><div class="n">${o.B}</div></div></div>`;
     const mm={};const bump=(s,k)=>all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){const m=mm[u.variant||"Unknown"]=mm[u.variant||"Unknown"]||{i:{t:0,A:0,B:0},o:{t:0,A:0,B:0}};m[k].t++;m[k][e.shift]=(m[k][e.shift]||0)+1}});bump("TI","i");bump("TO","o");
