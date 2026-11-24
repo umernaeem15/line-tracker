@@ -174,6 +174,11 @@ a.line-card h3::after{content:" \203A";color:#00AAD2}
 .shop-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px}
 .shop-kpis .kpi{background:#fff;border:1px solid var(--line,#d5d9e2);padding:14px 16px}
 .shop-kpis .kpi .n{font-size:34px;font-weight:800;color:#002C5F;line-height:1.1;margin-top:4px}
+th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+th.sortable:hover{color:#00AAD2}
+th[data-sort="1"]::after{content:" ▲";font-size:.75em;color:#00AAD2}
+th[data-sort="-1"]::after{content:" ▼";font-size:.75em;color:#00AAD2}
+th.dragover{box-shadow:inset 3px 0 0 #00AAD2}
 .tcf-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
 .tcf-st{background:#06376F;border:1px solid #00AAD2;padding:10px 14px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .tcf-st h4{margin:0;font-size:13px;letter-spacing:.08em;color:#B9CBE3;min-width:92px}
@@ -1282,6 +1287,71 @@ $("u-body").addEventListener("click",async e=>{
   else {if(b.dataset.a==="0"&&!confirm("Disable this account? They will not be able to sign in."))return; r=await sb.rpc("admin_set_active",{p_user:id,p_active:b.dataset.a==="1"})}
   if(r.error){toast(r.error.message);return} loadUsers();
 });
+/* ---------- Sortable, re-orderable table columns (every table with a header row) ---------- */
+(function(){
+  const kv=(k,v)=>{try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||"null");localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}};
+  let obs, busy=false, dragging=null; const done=new WeakSet(); const pending=new Set(); let raf=0;
+  const num=s=>{ // sortable value: duration, number or date, else text
+    s=s.trim(); if(s===""||s==="-"||s==="—")return {k:0,v:""};
+    let m=s.match(/^(\d+)\s*h\s*(\d+)\s*m$/); if(m)return {k:1,v:+m[1]*60+ +m[2]};
+    m=s.match(/^(\d+)\s*min$/); if(m)return {k:1,v:+m[1]};
+    if(/^-?\d+(\.\d+)?$/.test(s))return {k:1,v:parseFloat(s)};
+    if(/^[A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}/.test(s)){const t=Date.parse(s+" "+new Date().getFullYear());if(!isNaN(t))return {k:1,v:t}}
+    return {k:2,v:s.toLowerCase()};
+  };
+  const cmp=(a,b)=>a.k!==b.k?a.k-b.k:(a.k===2?a.v.localeCompare(b.v,undefined,{numeric:true}):a.v-b.v);
+  function eligible(t){const h=t.tHead;if(!h||h.rows.length!==1||!t.tBodies[0])return false;return [...h.rows[0].cells].every(c=>c.colSpan===1&&c.rowSpan===1)}
+  function setup(t){
+    const row=t.tHead.rows[0], ths=[...row.cells], sig=ths.map(h=>h.textContent.trim()).join("|"), key="lt-tbl:"+sig;
+    if(!t._tb){
+      t._tb={key,sort:null,order:null};
+      const saved=kv(key); if(saved){t._tb.sort=saved.sort||null;t._tb.order=saved.order||null}
+      ths.forEach((h,i)=>{h.dataset.oi=i;h.classList.add("sortable");h.draggable=true;h.title="Click to sort, drag to move this column"});
+      row.addEventListener("click",e=>{const h=e.target.closest("th");if(!h||dragging)return;const oi=+h.dataset.oi,s=t._tb.sort;t._tb.sort=(s&&s.oi===oi)?{oi,dir:-s.dir}:{oi,dir:1};save(t);refresh(t)});
+      row.addEventListener("dragstart",e=>{const h=e.target.closest("th");if(!h)return;dragging=h;try{e.dataTransfer.setData("text/plain",h.dataset.oi);e.dataTransfer.effectAllowed="move"}catch(x){}});
+      row.addEventListener("dragover",e=>{if(dragging){e.preventDefault();const h=e.target.closest("th");row.querySelectorAll("th").forEach(x=>x.classList.toggle("dragover",x===h&&x!==dragging))}});
+      row.addEventListener("dragleave",e=>{});
+      row.addEventListener("drop",e=>{e.preventDefault();const h=e.target.closest("th");row.querySelectorAll("th").forEach(x=>x.classList.remove("dragover"));if(!h||!dragging||h===dragging){dragging=null;return}
+        const from=[...row.cells].indexOf(dragging), to=[...row.cells].indexOf(h); dragging=null; moveCol(t,from,to); t._tb.order=[...row.cells].map(c=>+c.dataset.oi); save(t); refresh(t)});
+      row.addEventListener("dragend",()=>{dragging=null;row.querySelectorAll("th").forEach(x=>x.classList.remove("dragover"))});
+      if(t._tb.order&&t._tb.order.length===ths.length){ // restore the saved header order
+        const by={}; ths.forEach(h=>by[h.dataset.oi]=h); t._tb.order.forEach(oi=>by[oi]&&row.appendChild(by[oi]));
+      }
+    }
+  }
+  function moveCol(t,from,to){
+    const rows=[t.tHead.rows[0],...t.tBodies[0].rows];
+    rows.forEach(r=>{if(r.cells.length<Math.max(from,to)+1)return;const c=r.cells[from],ref=r.cells[to];r.insertBefore(c,from<to?ref.nextSibling:ref)});
+    [...t.tBodies[0].rows].forEach(r=>done.add(r));
+  }
+  function save(t){kv(t._tb.key,{sort:t._tb.sort,order:t._tb.order})}
+  function refresh(t){
+    if(busy)return; busy=true;
+    try{
+      const row=t.tHead.rows[0], ths=[...row.cells], tb=t.tBodies[0];
+      const orderNow=ths.map(h=>+h.dataset.oi);
+      // new (freshly rendered) rows arrive in the original column order: bring them in line with the header
+      [...tb.rows].forEach(r=>{if(done.has(r))return;done.add(r);if(r.cells.length!==ths.length)return;const cells=[...r.cells];orderNow.forEach(oi=>r.appendChild(cells[oi]))});
+      const s=t._tb.sort;
+      ths.forEach(h=>h.removeAttribute("data-sort"));
+      if(s){const ci=orderNow.indexOf(s.oi);if(ci>=0){ths[ci].dataset.sort=s.dir;
+        const rows=[...tb.rows], data=rows.filter(r=>r.cells.length===ths.length), rest=rows.filter(r=>r.cells.length!==ths.length);
+        const keyed=data.map((r,i)=>({r,i,v:num(r.cells[ci].textContent)}));
+        keyed.sort((a,b)=>cmp(a.v,b.v)*s.dir||a.i-b.i);
+        keyed.forEach(x=>tb.appendChild(x.r)); rest.forEach(r=>tb.appendChild(r));}}
+    }finally{busy=false; obs.takeRecords()}
+  }
+  function process(t){if(!t.isConnected||!eligible(t))return;setup(t);refresh(t)}
+  obs=new MutationObserver(ms=>{
+    if(busy)return;
+    ms.forEach(m=>{
+      const t=m.target.closest?m.target.closest("table"):null; if(t)pending.add(t);
+      m.addedNodes.forEach(n=>{if(n.nodeType!==1)return;if(n.tagName==="TABLE")pending.add(n);else n.querySelectorAll&&n.querySelectorAll("table").forEach(x=>pending.add(x))});
+    });
+    if(pending.size&&!raf)raf=setTimeout(()=>{raf=0;const l=[...pending];pending.clear();l.forEach(process)},0);
+  }); obs.observe(document.body,{childList:true,subtree:true});
+  document.querySelectorAll("table").forEach(process);
+})();
 $("signout").addEventListener("click",async()=>{await sb.auth.signOut();location.reload()});
 $("forgot-btn").addEventListener("click",async()=>{
   const email=$("login-email").value.trim();
