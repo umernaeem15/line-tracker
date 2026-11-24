@@ -91,6 +91,7 @@ textarea{min-height:64px;resize:vertical}
 body{margin:0}[hidden]{display:none!important}
 .qm{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
 .qm button{padding:12px 6px;font-weight:600;font-size:14px}
+.qm-lvl{margin-top:10px}.qm-lvl .label{margin-bottom:6px}
 .qm button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
 .list{display:flex;flex-direction:column}
 .list .it{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
@@ -306,6 +307,20 @@ const DECODE=[
   {p:"MCCDY7PRM", v:"Omoda C7 PHEV Premium"},
   {p:"PMFZB", choose:["Porter S7 FD","Porter S7 HD","Porter S7 HD AC","Porter Deckless"]}];
 const ALL_VARIANTS=[...new Set(DECODE.flatMap(d=>d.choose||[d.v]))];
+/* Cascading model picker: Brand > Model > Variant > Interior. Row = [brand,model,variant,interior,stored name,base variant (prefix/decode)] */
+const CATALOG=[
+["Hyundai","AD","High","","Hyundai AD High"],["Hyundai","AD","","BEIG","Hyundai AD BEIG"],["Hyundai","AD","","BUR","Hyundai AD BUR"],["Hyundai","AD","","CAP","Hyundai AD CAP"],
+["Hyundai","CN7","","NNB","CN7 NNB"],["Hyundai","CN7","","SSS","CN7 SSS"],
+["Hyundai","DN8","2.5","","DN8 2.5L"],["Hyundai","DN8","N Line","","DN8 N Line"],
+["OJ","J5","BEV Black","","Jaecoo J5 BEV Black"],["OJ","J5","HEV Comfort","","Jaecoo J5 HEV Comfort"],["OJ","J5","HEV Black","","Jaecoo J5 HEV Black"],["OJ","J5","HEV Gray","","Jaecoo J5 HEV Gray"],
+["OJ","J7","PHEV","Beige","Jaecoo J7 PHEV Beige","Jaecoo J7 PHEV Premium"],["OJ","J7","PHEV","Black","Jaecoo J7 PHEV Black","Jaecoo J7 PHEV Premium"],
+["OJ","C7","PHEV","","Omoda C7 PHEV Premium"],
+["Hyundai","HR","DL","","Porter Deckless"],["Hyundai","HR","DL AC","","Porter DL AC"],["Hyundai","HR","FD","","Porter S7 FD"],["Hyundai","HR","FD AC","","Porter FD AC"],["Hyundai","HR","HD","","Porter S7 HD"],["Hyundai","HR","HD AC","","Porter S7 HD AC"],
+["Hyundai","LX3","Calligraphy NNB","NNB","LX3 CAL 3NB"],["Hyundai","LX3","Calligraphy ISB","ISB","LX3 CAL ISB"],["Hyundai","LX3","Smart NNB","NNB","LX3 SMT NNB"],
+["Hyundai","NX4","AWD","","NX4 4WD"],["Hyundai","NX4","FWD","","NX4 2WD"],
+["Hyundai","TM","AWD","MMX","TM 4WD MMX"],["Hyundai","TM","AWD","NNB","TM 4WD NNB"]];
+CATALOG.forEach(r=>{if(!ALL_VARIANTS.includes(r[4]))ALL_VARIANTS.push(r[4])});
+const QM_BASE={};CATALOG.forEach(r=>{if(r[5])QM_BASE[r[4]]=r[5]});
 function decodeVin(vin){return DECODE.find(d=>vin.startsWith(d.p))||null}
 
 // Shifts (prototype default — adjust to plant timings)
@@ -524,6 +539,7 @@ async function handleVin(raw){
   // variant
   let variant=u&&u.variant; let choices=null;
   if(!variant){const d=decodeVin(vin); if(d&&d.v)variant=d.v; else choices=d?d.choose:ALL_VARIANTS}
+  if(variant&&quickModel&&QM_BASE[quickModel]===variant&&!(u&&u.variant))variant=quickModel;
   if(!variant&&quickModel&&choices.includes(quickModel)){variant=quickModel;choices=null}
   pending={vin,variant,choices,seqWarn,exists:!!u};
   renderPending();
@@ -576,14 +592,32 @@ async function commitScan(){
   qmFill();
 }
 /* Quick model pick (Body In): pre-selects the variant for VINs that share a structure */
-const QM_LIST=ALL_VARIANTS;
-let quickModel=(()=>{try{return localStorage.getItem("lt-qm")||""}catch(e){return ""}})();
+const QM_LEVELS=[["b","Brand",0],["m","Model",1],["v","Variant",2],["i","Interior",3]];
+let qmSel=(()=>{try{return JSON.parse(localStorage.getItem("lt-qm2")||"{}")||{}}catch(e){return {}}})();
+let quickModel="";
+function qmOpts(k){ // options at level k given the earlier picks
+  const rows=CATALOG.filter(r=>QM_LEVELS.slice(0,k).every(l=>r[l[2]]===qmSel[l[0]]));
+  return [...new Set(rows.map(r=>r[k]))];
+}
+function qmNormalize(){ // drop stale picks; auto-pick a level that has one option
+  for(let k=0;k<4;k++){
+    const key=QM_LEVELS[k][0],o=qmOpts(k);
+    if(qmSel[key]!==undefined&&!o.includes(qmSel[key]))for(let j=k;j<4;j++)delete qmSel[QM_LEVELS[j][0]];
+    if(qmSel[key]===undefined&&o.length===1)qmSel[key]=o[0];
+    if(qmSel[key]===undefined)break;
+  }
+}
+function qmName(){
+  const r=CATALOG.filter(r=>QM_LEVELS.every(l=>r[l[2]]===qmSel[l[0]]));
+  return r.length===1?r[0][4]:"";
+}
 // First 12 VIN characters for a model: taken from the latest logged unit of that model, else the known decode prefix
 function qmPrefix(v){
   const r=Object.values(units).filter(u=>u.variant===v&&u.vin).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))[0];
   if(r)return r.vin.slice(0,12);
-  return PREFIX12[v]||"";
+  return qmPrefixOf(v);
 }
+function qmPrefixOf(v){return PREFIX12[v]||PREFIX12[QM_BASE[v]]||""}
 // VIN characters 1–12 per model (from the production sample); the operator types the last 5
 const PREFIX12={"CN7 NNB":"PMHCS41JVTN6","CN7 SSS":"PMHCS41JVTN6","DN8 2.5L":"PMHL341BMTN4","DN8 FL":"PMHF641CMTN4",
   "NX4 2WD":"PMHJB811MTN7","NX4 4WD":"PMHJB811STN7","TM 2WD":"PMHS3811MTN5","TM 4WD MMX":"PMHS3811STN5","TM 4WD NNB":"PMHS3811STN5",
@@ -596,14 +630,26 @@ function qmFill(){
 }
 function renderQuickModel(){
   $("quick-model").hidden=!station; if(!station)return;
-  $("qm-chips").innerHTML=QM_LIST.map(v=>`<button type="button" data-qm="${esc(v)}" aria-pressed="${v===quickModel}" title="${esc(v)}">${esc(v.replace(/^(Jaecoo|Omoda) /,"").replace(/ P?HEV/,"").replace("Porter S7 ","Porter "))}</button>`).join("");
-  $("qm-state").textContent=quickModel?"Selected: "+quickModel+". Type the last digits, then Enter (tap again to clear)":"Tap a model to pre-fill its VIN";
+  qmNormalize(); quickModel=qmName();
+  let html="";
+  for(let k=0;k<4;k++){
+    if(k>0&&qmSel[QM_LEVELS[k-1][0]]===undefined)break;
+    const key=QM_LEVELS[k][0],o=qmOpts(k);
+    if(o.length<2)continue;
+    html+=`<div class="qm-lvl"><div class="label">${QM_LEVELS[k][1]}</div><div class="qm">${o.map(x=>`<button type="button" data-k="${key}" data-val="${esc(x)}" aria-pressed="${qmSel[key]===x}">${esc(x===""?"Standard":x)}</button>`).join("")}</div></div>`;
+  }
+  $("qm-chips").innerHTML=html;
+  $("qm-state").textContent=quickModel?"Selected: "+quickModel+(qmPrefixOf(quickModel)?". Type the last 5 digits, then Enter":". No VIN prefix on file yet: type the full VIN or scan"):"Pick brand, model, variant and interior to pre-fill the VIN";
   if(quickModel&&!$("vin-input").value)qmFill();
 }
 $("qm-chips").addEventListener("click",e=>{
-  const b=e.target.closest("button[data-qm]"); if(!b)return;
-  quickModel=quickModel===b.dataset.qm?"":b.dataset.qm;
-  try{localStorage.setItem("lt-qm",quickModel)}catch(e){}
+  const b=e.target.closest("button[data-k]"); if(!b)return;
+  const k=QM_LEVELS.findIndex(l=>l[0]===b.dataset.k);
+  const same=qmSel[b.dataset.k]===b.dataset.val;
+  for(let j=k;j<4;j++)delete qmSel[QM_LEVELS[j][0]];
+  if(!same)qmSel[b.dataset.k]=b.dataset.val;
+  qmNormalize(); quickModel=qmName();
+  try{localStorage.setItem("lt-qm2",JSON.stringify(qmSel))}catch(e){}
   renderQuickModel(); qmFill();
 });
 function refocus(){setTimeout(()=>{if(!$("vin-input").closest("[hidden]")&&!document.querySelector(".modal"))$("vin-input").focus()},30)}
