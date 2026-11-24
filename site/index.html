@@ -877,7 +877,7 @@ function renderStationList(){
   const inside=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]).length;
   $("k-in-t").textContent="Inside "+st.line+" Now"; $("k-in").textContent=inside; $("k-in-d").textContent="Scanned "+st.line+" In, not yet Out";
   const held=all.filter(u=>u.hold).sort((x,y)=>x.holdAt-y.holdAt);
-  $("k-hold").textContent=held.length; $("k-hold-d").textContent=held.length?"Oldest held "+fmtDur(Date.now()-held[0].holdAt):"Nothing on hold";
+  const stk=stuckInfo().size; $("k-hold").textContent=held.length+stk; $("k-hold-d").textContent=held.length?"Oldest held "+fmtDur(Date.now()-held[0].holdAt)+(stk?" · "+stk+" auto":""):(stk?stk+" auto (no movement)":"Nothing on hold");
   $("st-recent").innerHTML=rows.length?rows.slice(0,40).map(u=>`<div class="it"><span class="mono muted">${fmtT(u.scans[station].t)}</span><span style="min-width:0"><span class="mono">${u.vin}</span><br><span class="note">${esc(u.variant)}</span></span><span>${u.hold?'<span class="chip hold">Hold</span>':""}</span></div>`).join("")
     :`<div class="empty">No vehicles logged at ${esc(ST[station].name)} yet today. Scan the VIN card on the inspection book to log the first one.</div>`;
 }
@@ -999,7 +999,7 @@ function renderShop(){
   const cnt=s=>{const o={t:0,A:0,B:0};all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){o.t++;o[e.shift]=(o[e.shift]||0)+1}});return o};
   const ci=cnt(si), co=cnt(so);
   const inside=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]).sort((a,b)=>a.scans[si].t-b.scans[si].t);
-  const held=inside.filter(u=>u.hold).length;
+  const stuck=stuckInfo(); const held=inside.filter(u=>u.hold||stuck.has(u.vin)).length;
   const nx=STATIONS[ST[so].i+1]; const wait=nx?all.filter(u=>u.scans&&u.scans[so]&&!u.scans[nx.id]).length:null;
   const mm={}; const bump=(s,k)=>all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){const m=mm[u.variant||"Unknown"]=mm[u.variant||"Unknown"]||{n:0,i:0,o:0};m[k]++}});
   inside.forEach(u=>{const m=mm[u.variant||"Unknown"]=mm[u.variant||"Unknown"]||{n:0,i:0,o:0};m.n++}); bump(si,"i"); bump(so,"o");
@@ -1008,7 +1008,21 @@ function renderShop(){
   $("shop-generic").innerHTML=`<div class="row" style="justify-content:space-between"><div><h1 style="font-size:26px">${name} dashboard</h1><div class="note">Units inside ${name} right now and today's movement. Updated ${new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})}, refreshes every 60 s.</div></div></div>
     <div class="shop-kpis">${kpi("Inside now",inside.length,held?held+" on hold":"")}${kpi(name+" In today",ci.t,"Shift A "+ci.A+" · Shift B "+ci.B)}${kpi(name+" Out today",co.t,"Shift A "+co.A+" · Shift B "+co.B)}${wait==null?"":kpi("Waiting for "+next,wait,"Out of "+name+", not yet in "+next)}</div>
     <div class="panel" style="margin-top:16px"><h2>By model</h2><div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Model</th><th class="num">Inside now</th><th class="num">In today</th><th class="num">Out today</th></tr></thead><tbody>${rows.length?rows.map(([m,v])=>`<tr><td>${esc(m)}</td><td class="num">${v.n}</td><td class="num">${v.i}</td><td class="num">${v.o}</td></tr>`).join(""):`<tr><td colspan="4" class="empty">Nothing in ${name} today.</td></tr>`}</tbody></table></div></div>
-    <div class="panel" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h2>Units inside ${name}</h2><span class="chip count">${inside.length}</span></div><p class="note">Oldest first.</p><div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>VIN</th><th>Model</th><th>Color</th><th>${name} In</th><th>Time inside</th><th></th></tr></thead><tbody>${inside.length?inside.slice(0,300).map(u=>`<tr><td class="mono">${u.vin}</td><td>${esc(u.variant||"-")}</td><td>${esc(u.color||"-")}</td><td>${fmtDT(u.scans[si].t)}</td><td>${fmtDur(Date.now()-u.scans[si].t)}</td><td>${u.hold?'<span class="chip hold">Hold</span>':""}</td></tr>`).join(""):`<tr><td colspan="6" class="empty">No units inside.</td></tr>`}</tbody></table></div>${inside.length>300?`<p class="note">Showing the oldest 300 of ${inside.length}.</p>`:""}</div>`;
+    <div class="panel" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h2>Units inside ${name}</h2><span class="chip count">${inside.length}</span></div><p class="note">Oldest first.</p><div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>VIN</th><th>Model</th><th>Color</th><th>${name} In</th><th>Time inside</th><th></th></tr></thead><tbody>${inside.length?inside.slice(0,300).map(u=>`<tr><td class="mono">${u.vin}</td><td>${esc(u.variant||"-")}</td><td>${esc(u.color||"-")}</td><td>${fmtDT(u.scans[si].t)}</td><td>${fmtDur(Date.now()-u.scans[si].t)}</td><td>${u.hold?'<span class="chip hold">Hold</span>':(stuck.has(u.vin)?'<span class="chip hold" title="No movement for '+stuck.get(u.vin).n+' working days">Hold (auto)</span>':"")}</td></tr>`).join(""):`<tr><td colspan="6" class="empty">No units inside.</td></tr>`}</tbody></table></div>${inside.length>300?`<p class="note">Showing the oldest 300 of ${inside.length}.</p>`:""}</div>`;
+}
+/* Auto hold: a unit whose last scan is 2 or more working days old counts as held.
+   A working day is a day on which the unit's shop had any scan (In or Out), so weekends, holidays and plant shutdowns are skipped. */
+const STUCK_DAYS=2;
+function stuckInfo(){
+  const act=[new Set(),new Set(),new Set(),new Set()], today=prodDay(Date.now()), out=new Map(), all=Object.values(units);
+  all.forEach(u=>{const s=u.scans||{};STATIONS.forEach(st=>{const e=s[st.id];if(e&&e.day)act[ST[st.id].i>>1].add(e.day)})});
+  all.forEach(u=>{
+    if(u.hold)return; const last=lastStation(u); if(!last||last==="QO")return;
+    const e=u.scans[last]; if(!e||!e.day)return; const sh=ST[last].i>>1;
+    let n=0; act[sh].forEach(d=>{if(d>e.day&&d<=today)n++});
+    if(n>=STUCK_DAYS)out.set(u.vin,{n,shop:LINES[sh],since:e.t,at:last});
+  });
+  return out;
 }
 function tcfInsideSet(){ // units counted as inside TCF: on the 37-station conveyor, or held (offline). Older units pushed off the end count as lined off.
   const rp=tcfReplay(); return new Set(Object.values(units).filter(u=>u.scans&&u.scans.TI&&!u.scans.TO&&((u.vin in rp.where)||u.hold)).map(u=>u.vin));
@@ -1018,20 +1032,22 @@ function renderDashboard(){
   const today=prodDay(Date.now()); const sf=$("f-shift").value;
   $("dash-date").textContent="Production day "+new Date(today+"T12:00").toLocaleDateString([], {weekday:"long",day:"numeric",month:"long"})+" · Shift A 08:00–16:30, Shift B 16:30–01:00";
   const all=Object.values(units);
-  const tcfIn=tcfInsideSet();
+  const tcfIn=tcfInsideSet(); const stuck=stuckInfo();
   const inToday=(u,s)=>{const e=u.scans&&u.scans[s];return e&&e.day===today&&(!sf||e.shift===sf)};
   // Flow cards
   $("flow").innerHTML=LINES.map((ln,li)=>{
     const si=STATIONS[li*2].id, so=STATIONS[li*2+1].id;
     const nIn=all.filter(u=>inToday(u,si)).length, nOut=all.filter(u=>inToday(u,so)).length;
     const insd=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]&&(li!==2||tcfIn.has(u.vin))); const wip=insd.length;
-    const held=insd.filter(u=>u.hold).length;
+    const held=insd.filter(u=>u.hold||stuck.has(u.vin)).length;
     return `<a class="line-card" href="#shop-${ln.toLowerCase()}" aria-label="Open the ${ln} dashboard"><h3>${ln} ${held?`<span class="chip hold">${held} hold</span>`:""}</h3>
       <div class="io-row"><div><div class="label">In</div><div class="n">${nIn}</div></div><div><div class="label">Out</div><div class="n">${nOut}</div></div><div class="wip"><div class="label">Inside</div><div class="n">${wip}</div></div></div></a>`}).join("");
   // Hold
   const holds=all.filter(u=>u.hold).sort((a,b)=>a.holdAt-b.holdAt);
-  $("hold-count").textContent=holds.length;
-  $("hold-body").innerHTML=holds.length?holds.map(u=>`<tr><td class="mono">${u.vin}</td><td>${esc(u.variant)}</td><td>${esc(u.holdStation?ST[u.holdStation].name:positionOf(u))}</td><td>${fmtDur(Date.now()-u.holdAt)}</td><td class="wrap">${esc(u.holdReason)}<div class="note">${esc(u.holdBy||"")}</div></td><td><button data-release="${u.vin}">Release</button></td></tr>`).join("")
+  const auto=[...stuck.entries()].map(([vin,s])=>({u:units[vin],s})).sort((a,b)=>a.s.since-b.s.since);
+  const autoRows=auto.map(({u,s})=>`<tr><td class="mono">${u.vin}</td><td>${esc(u.variant)}</td><td>${esc(positionOf(u))}</td><td>${fmtDur(Date.now()-s.since)}</td><td class="wrap">No movement for ${s.n} working days<div class="note">Automatic hold. It clears when the unit is scanned at the next station.</div></td><td></td></tr>`).join("");
+  $("hold-count").textContent=holds.length+auto.length;
+  $("hold-body").innerHTML=(holds.length||auto.length)?autoRows+holds.map(u=>`<tr><td class="mono">${u.vin}</td><td>${esc(u.variant)}</td><td>${esc(u.holdStation?ST[u.holdStation].name:positionOf(u))}</td><td>${fmtDur(Date.now()-u.holdAt)}</td><td class="wrap">${esc(u.holdReason)}<div class="note">${esc(u.holdBy||"")}</div></td><td><button data-release="${u.vin}">Release</button></td></tr>`).join("")
     :`<tr><td colspan="6" class="empty">No units on hold.</td></tr>`;
   // Mix
   const mix={}; all.filter(u=>inToday(u,"BI")).forEach(u=>mix[u.variant]=(mix[u.variant]||0)+1);
@@ -1130,14 +1146,14 @@ const PL_LOCS=[["Body","BI","BO","#00AAD2","Paint In"],["Paint","PI","PO","#E4DC
 function renderPlant(){
   if($("view-plant").hidden)return;
   const today=prodDay(Date.now()), all=Object.values(units);
-  const tcfIn=tcfInsideSet();
+  const tcfIn=tcfInsideSet(); const stuck=stuckInfo();
   const cnt=s=>{const o={t:0,A:0,B:0};all.forEach(u=>{const e=u.scans&&u.scans[s];if(e&&e.day===today){o.t++;o[e.shift]=(o[e.shift]||0)+1}});return o};
   const kpi=(t,o)=>`<div class="pl-kpi"><h4>${t}</h4><div><div class="l">Today</div><div class="n">${o.t}</div></div><div class="sh"><div class="l">Shift A</div><div class="n">${o.A}</div></div><div class="sh"><div class="l">Shift B</div><div class="n">${o.B}</div></div></div>`;
   const wip=all.filter(u=>u.scans&&u.scans.BI&&!u.scans.QO).length;
   $("pl-top").innerHTML=`<div class="pl-kpi"><h4>TOTAL WIP IN PLANT</h4><div><div class="l">Body In to QC Out</div><div class="n">${wip}</div></div></div>`+kpi("LINE IN (Body In)",cnt("BI"))+kpi("LINE OFF (QC Out)",cnt("QO"));
   $("pl-cols").innerHTML=PL_LOCS.map(([name,si,so,ac,next],i)=>{
     const inside=all.filter(u=>u.scans&&u.scans[si]&&!u.scans[so]&&(i!==2||tcfIn.has(u.vin)));
-    const held=inside.filter(u=>u.hold).length;
+    const held=inside.filter(u=>u.hold||stuck.has(u.vin)).length;
     const mm={}; inside.forEach(u=>{const k=u.variant||"Unknown";mm[k]=(mm[k]||0)+1});
     const rows=Object.entries(mm).sort((a,b)=>b[1]-a[1]); const mx=Math.max(1,...rows.map(r=>r[1]));
     const wait=i<3?all.filter(u=>u.scans&&(u.scans[so]||(i===2&&u.scans.TI&&!tcfIn.has(u.vin)))&&!(u.scans[PL_LOCS[i+1][1]])).length:null;
