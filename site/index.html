@@ -99,15 +99,16 @@ body{margin:0}[hidden]{display:none!important}
 .tcf-lab{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:800;letter-spacing:.12em;color:var(--gc);font-size:13px;background:var(--gtag);border:1px solid var(--gc)}
 .tcf-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px}
 @media(min-width:1100px){.tcf-cards{grid-template-columns:repeat(10,minmax(0,1fr))}}
-.tcf-c{background:var(--gbg);border:1px solid var(--gc);padding:8px;min-width:0;position:relative}
+.tcf-c{background:var(--tbg,var(--gbg));border:3px solid var(--gc);padding:8px;min-width:0;position:relative}
 .tcf-off{margin-top:18px;border-top:1px dashed #d33;padding-top:12px}.tcf-offh{font-weight:800;letter-spacing:.08em;color:#ff8a8a;font-size:13px;margin-bottom:10px}.tcf-offh span{font-weight:500;letter-spacing:0;color:#B9CBE3;margin-left:6px}.tcf-offh b{margin-left:10px;background:#d33;color:#fff;padding:1px 8px}
 .tcf-off .nm{color:#ff8a8a;background:#3a1218}
-.tcf-c.hold{border-color:#d33;background:#2a1418}
+.tcf-c.hold{border-color:#d33}
 .tcf-c.empty{opacity:.8;border-style:dashed}
 .tcf-c .nm{max-width:100%;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:top;letter-spacing:0;font-weight:800;font-size:12px;color:var(--gc);background:var(--gtag);display:inline-block;padding:2px 6px;letter-spacing:.03em}
-.tcf-c .vn{font-family:var(--f-mono);font-weight:700;font-size:17px;margin-top:8px;color:#fff}
-.tcf-c .vr{font-size:13.5px;color:#E8EEF7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tcf-c .tm{font-size:12px;color:#D5E0F0;margin-top:2px}
+.tcf-c .vn{font-family:var(--f-mono);font-weight:700;font-size:17px;margin-top:8px;color:var(--tfg,#fff)}
+.tcf-c .vr{font-size:13.5px;color:var(--tfg,#E8EEF7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcf-c .vr.cn{white-space:normal;font-size:12px;line-height:1.2;min-height:2.4em}
+.tcf-c .tm{font-size:12px;color:var(--tfg2,#D5E0F0);margin-top:2px}
 .tcf-c .hd{position:absolute;top:6px;right:6px;font-size:10px;font-weight:800;background:#d33;color:#fff;padding:1px 5px}
 .qm-lvl{margin-top:10px}.qm-lvl .label{margin-bottom:6px}
 .qm button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -331,7 +332,15 @@ const STATIONS=[
   {id:"QI",line:"QC",io:"In"},{id:"QO",line:"QC",io:"Out"}];
 const ST=Object.fromEntries(STATIONS.map((s,i)=>[s.id,{...s,i,name:s.line+" "+s.io}]));
 const LINES=["Body","Paint","TCF","QC"];
-const BODY_COLORS=["WYW","NPG","NUG","RBG","CBP","NKW","MOG","NDB","2RP","NMG","NT2","XB2","R8N","R2F","SMH","TB5"]; // codes seen on the line; use Other for any new one
+const COLOR_MAP={WYW:["Polar White","#F4F4F2"],NKA:["Black Diamond Metallic","#2A2C30"],GGM:["Graphite Grey Metallic","#5A5E63"],TB5:["Teal Blue","#2F7F8C"],SMH:["Silver Metallic","#B5B9BE"],M2F:["Magnetic Force","#6B6F76"],XB2:["Oxford Blue","#2B4A8B"],NBA:["Phantom Black","#15161A"],NT2:["Hampton Gray","#8A8D91"],"2RP":["Ultimate Red Metallic","#B3202A"],NKW:["Khaki White","#E8E4D6"],CCB:["Carbon Crystal Black","#1E2022"],NPG:["Phantom Gray","#4A4D52"],NUG:["Eucalyptus Green","#4F7A5F"],EGM:["Elegant Gray","#7E8185"],NDB:["Dark Blue","#1F3560"],MOG:["Olive Grey","#6C6F56"],MMS:["Moonlight Silver","#C9CDD2"],RBG:["Royal British Green","#1F4D36"],NMG:["Misty Green","#8FB39A"],YAW:["Creamy White","#F1E6CF"],R8N:["Robust Emerald Green","#1F6B4F"],R2F:["Rain Forest","#3E5A3B"]};
+const BODY_COLORS=Object.keys(COLOR_MAP);
+function colorName(c){return c?(COLOR_MAP[c]?COLOR_MAP[c][0]:c):"No color"}
+function tileStyle(c){ // tile fill follows the body colour; text flips light/dark for contrast
+  const m=COLOR_MAP[c]; if(!m)return "";
+  const h=m[1].slice(1),r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  const dark=(r*299+g*587+b*114)/1000<150;
+  return `--tbg:${m[1]};--tfg:${dark?"#fff":"#111"};--tfg2:${dark?"#e6e9ee":"#2a2a2a"}`;
+}
 const ISSUE_TYPES=["Body dent / scratch","Paint defect","Missing part","Fitment / gap","Electrical","Water leak","Torque / fastening","Other"];
 
 // VIN characters 1–9 → variant. "choose" = same VIN structure, operator selects at Body In.
@@ -606,7 +615,7 @@ function renderPending(){
     return}
   if(station==="PO"&&!p.color&&!p.colorSkip&&!(units[p.vin]&&units[p.vin].color)){
     showResult("warn","Body color",`<div class="big">${p.vin}</div><div>${esc(p.variant)}</div><p style="margin:6px 0 10px">Choose the body color of this vehicle:</p>
-      <div class="choices">${BODY_COLORS.map(c=>`<button type="button" data-color="${c}">${c}</button>`).join("")}</div>
+      <div class="choices">${BODY_COLORS.map(c=>`<button type="button" data-color="${c}" title="${esc(colorName(c))}"><b>${c}</b><br><span style="font-size:11px;font-weight:500">${esc(colorName(c))}</span></button>`).join("")}</div>
       <div class="row" style="margin-top:10px"><input id="color-other" placeholder="Other code" maxlength="8" style="width:130px;text-transform:uppercase"><button type="button" data-act="color-other">Use</button><button type="button" data-act="color-skip">Skip</button><button type="button" data-act="cancel">Cancel</button></div>`);
     return}
   commitScan();
@@ -789,9 +798,9 @@ function renderDashboard(){
     $("tcf-line").innerHTML=grp.map(([g,names])=>`<div class="tcf-grp g-${g.toLowerCase()}"><div class="tcf-lab">${g}</div><div class="tcf-cards">${names.map(nm=>{
       const u=inside[n++];
       if(!u)return `<div class="tcf-c empty"><span class="nm">${nm}</span><div class="vn">-</div><div class="vr">Empty</div></div>`;
-      return `<div class="tcf-c${u.hold?" hold":""}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="vr">${u.color?"Color: "+esc(u.color):"Color: -"}</div><div class="tm">${fmtT(u.scans.TI.t)} · ${fmtDur(Date.now()-u.scans.TI.t)}</div></div>`}).join("")}</div></div>`).join("")
+      return `<div class="tcf-c${u.hold?" hold":""}" style="${tileStyle(u.color)}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(u.color||"")}">${esc(colorName(u.color))}${u.color?" ("+esc(u.color)+")":""}</div><div class="tm">${fmtT(u.scans.TI.t)} · ${fmtDur(Date.now()-u.scans.TI.t)}</div></div>`}).join("")}</div></div>`).join("")
       +(inside.length>37?`<div class="tcfnote" style="margin-top:10px">${inside.length-37} more unit(s) scanned into TCF are beyond the 37 stations, check for missing TCF Out scans.</div>`:"");
-    $("tcf-line").innerHTML+=`<div class="tcf-off"><div class="tcf-offh">OFFLINE <span>(held, taken off the conveyor)</span><b>${off.length}</b></div>`+(off.length?`<div class="tcf-cards">${off.map(u=>`<div class="tcf-c hold"><span class="nm">Off from ${esc(u.holdTcf||SN[full.indexOf(u)]||"TCF")}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr">${esc(u.variant||"-")}</div><div class="vr">${u.color?"Color: "+esc(u.color):"Color: -"}</div><div class="tm">${esc(u.holdReason||"")}</div><div class="tm">Offline ${fmtDur(Date.now()-(u.holdAt||Date.now()))}</div></div>`).join("")}</div>`:`<div class="tcfnote">No units offline.</div>`)+`</div>`;
+    $("tcf-line").innerHTML+=`<div class="tcf-off"><div class="tcf-offh">OFFLINE <span>(held, taken off the conveyor)</span><b>${off.length}</b></div>`+(off.length?`<div class="tcf-cards">${off.map(u=>`<div class="tcf-c hold" style="${tileStyle(u.color)}"><span class="nm">Off from ${esc(u.holdTcf||SN[full.indexOf(u)]||"TCF")}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr">${esc(u.variant||"-")}</div><div class="vr cn" title="${esc(u.color||"")}">${esc(colorName(u.color))}${u.color?" ("+esc(u.color)+")":""}</div><div class="tm">${esc(u.holdReason||"")}</div><div class="tm">Offline ${fmtDur(Date.now()-(u.holdAt||Date.now()))}</div></div>`).join("")}</div>`:`<div class="tcfnote">No units offline.</div>`)+`</div>`;
     $("tcf-count").textContent=inside.length+" on line";
     $("tcf-upd").textContent="Updated "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})+" · refreshes every 60 s";
   })();
