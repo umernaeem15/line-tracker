@@ -142,9 +142,10 @@ body{margin:0}[hidden]{display:none!important}
 .pl-card .big{font-size:54px;font-weight:800;color:#fff;line-height:1}
 .pl-card .sub{font-size:12px;color:#B9CBE3;letter-spacing:.06em;text-transform:uppercase}
 .pl-io{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pl-io>div{background:rgba(0,0,0,.18);padding:6px 10px}
+.pl-io>div{background:rgba(0,0,0,.18);padding:6px 10px;display:flex;flex-direction:column;gap:2px}
+.pl-io .sub{white-space:nowrap}
 .pl-io .v{font-size:20px;font-weight:800;color:#fff}.pl-io .ab{font-size:11px;color:#B9CBE3}
-.pl-mod{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0}
+.pl-mod{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow:hidden}
 .pl-mod .r{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:8px;align-items:center;font-size:13px;color:#fff}
 .pl-mod .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pl-mod .bar{height:5px;background:var(--ac);opacity:.9;grid-column:1/-1;margin-top:-3px}
@@ -1167,7 +1168,7 @@ function renderPlant(){
     const oldest=inside.length?Math.min(...inside.map(u=>u.scans[si].t)):null;
     return `<div class="pl-card" style="--ac:${ac}"><h3>${name}</h3>
       <div><div class="big">${inside.length}</div><div class="sub">Inside now${held?` · <span class="pl-hold">${held} on hold</span>`:""}</div></div>
-      <div class="pl-io"><div><div class="sub">${name} In today</div><div class="v">${ci.t}</div><div class="ab">A ${ci.A} · B ${ci.B}</div></div><div><div class="sub">${name} Out today</div><div class="v">${co.t}</div><div class="ab">A ${co.A} · B ${co.B}</div></div></div>
+      <div class="pl-io"><div><div class="sub">In today</div><div class="v">${ci.t}</div><div class="ab">A ${ci.A} · B ${ci.B}</div></div><div><div class="sub">Out today</div><div class="v">${co.t}</div><div class="ab">A ${co.A} · B ${co.B}</div></div></div>
       <div class="pl-mod">${rows.length?rows.slice(0,9).map(([m,n])=>`<div class="r"><span class="t" title="${esc(m)}">${esc(m)}</span><span class="c">${n}</span><div class="bar" style="width:${n/mx*100}%"></div></div>`).join("")+(rows.length>9?`<div class="sub">+${rows.length-9} more models</div>`:""):`<div class="sub">Nothing inside</div>`}</div>
       <div class="pl-foot"><span>${wait==null?"":`Waiting for ${next}: <b>${wait}</b>`}</span><span>${oldest?`Oldest inside: <b>${fmtDur(Date.now()-oldest)}</b>`:""}</span></div></div>`}).join("");
   $("pl-upd").textContent="Updated "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})+" · refreshes every 60 s";
