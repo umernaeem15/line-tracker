@@ -92,6 +92,7 @@ body{margin:0}[hidden]{display:none!important}
 .qm{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
 .qm button{padding:12px 6px;font-weight:600;font-size:14px}
 .tcfv{background:#0f1624;border:1px solid #1f2a44;padding:18px;color:#e6edf8}
+.tcfv:fullscreen{overflow:auto;padding:24px 28px}.tcfv:fullscreen .tcf-c .vn{font-size:20px}.tcfv:fullscreen .tcf-c .vr{font-size:15px}
 .tcfnote{margin:4px 0 0;color:#9aa8c2;font-size:13.5px}
 .tcf-grp{display:grid;grid-template-columns:34px 1fr;gap:10px;margin-top:12px}
 .g-trim{--gc:#4c8dff;--gbg:#101a2e;--gtag:#16233f}.g-chassis{--gc:#2fbf9b;--gbg:#0f211f;--gtag:#13302b}.g-final{--gc:#f0a23b;--gbg:#251c0e;--gtag:#3a2a10}
@@ -258,7 +259,7 @@ td.wrap{white-space:normal;min-width:240px;width:100%;padding:12px 10px!importan
     <div class="flow" id="flow"></div>
 
     <div class="tcfv" style="margin-top:16px">
-      <div class="row" style="justify-content:space-between"><div><h2 style="color:#fff">TCF line view, station by station</h2><p class="tcfnote">Units inside TCF in the order they were scanned In. The newest is at T-1 and the oldest is next to leave at F-9.</p></div><span class="chip count" id="tcf-count" style="background:#1d2b4a;color:#9cc2ff;border-color:#2a4073">0</span></div>
+      <div class="row" style="justify-content:space-between"><div><h2 style="color:#fff">TCF line view, station by station</h2><p class="tcfnote">Units inside TCF in the order they were scanned In. The newest is at T-1 and the oldest is next to leave at F-9.</p></div><div class="row" style="gap:10px"><span class="tcfnote" id="tcf-upd"></span><span class="chip count" id="tcf-count" style="background:#1d2b4a;color:#9cc2ff;border-color:#2a4073">0</span><button type="button" id="tcf-fs" style="background:#1d2b4a;color:#fff;border-color:#2a4073">Full screen</button></div></div>
       <div id="tcf-line"></div>
     </div>
 
@@ -764,6 +765,7 @@ function renderDashboard(){
       return `<div class="tcf-c${u.hold?" hold":""}">${u.hold?'<span class="hd">HOLD</span>':""}<span class="nm">${nm}</span><div class="vn">${esc(u.vin.slice(-6))}</div><div class="vr" title="${esc(u.variant||"")}">${esc(u.variant||"-")}</div><div class="vr">${u.color?"Color: "+esc(u.color):"Color: -"}</div><div class="tm">${fmtT(u.scans.TI.t)} · ${fmtDur(Date.now()-u.scans.TI.t)}</div></div>`}).join("")}</div></div>`).join("")
       +(inside.length>37?`<div class="tcfnote" style="margin-top:10px">${inside.length-37} more unit(s) scanned into TCF are beyond the 37 stations, check for missing TCF Out scans.</div>`:"");
     $("tcf-count").textContent=inside.length+" in TCF";
+    $("tcf-upd").textContent="Updated "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})+" · refreshes every 60 s";
   })();
   // Hold
   const holds=all.filter(u=>u.hold).sort((a,b)=>a.holdAt-b.holdAt);
@@ -829,8 +831,10 @@ $("export-btn").addEventListener("click",async()=>{
 
 /* ---------- Boot ---------- */
 function setConn(state,txt){$("conn-dot").className="dot "+(state||"");$("conn-txt").textContent=txt}
+$("tcf-fs").addEventListener("click",()=>{const el=document.querySelector(".tcfv");if(document.fullscreenElement){document.exitFullscreen()}else if(el.requestFullscreen){el.requestFullscreen().catch(()=>toast("Full screen is not available here"))}else toast("Full screen is not supported on this browser")});
+document.addEventListener("fullscreenchange",()=>{$("tcf-fs").textContent=document.fullscreenElement?"Exit full screen":"Full screen"});
 function renderAll(){renderStationList();renderDashboard()}
-setInterval(()=>{if(!$("view-dashboard").hidden)renderDashboard(); if(station)$("st-shift").textContent="Shift "+shiftOf(Date.now())},60000);
+setInterval(()=>{if(!$("view-dashboard").hidden||document.fullscreenElement)renderDashboard(); if(station)$("st-shift").textContent="Shift "+shiftOf(Date.now())},60000);
 route();
 /* ---------- Supabase ---------- */
 const SB_URL="https://rcghnjftvdgwwejznpsz.supabase.co", SB_KEY="sb_publishable_mz70FZbbh1fILXLyN7Ay-w_U9mJgT6J";
